@@ -20,20 +20,28 @@ export const queryClient = new QueryClient({
   },
 });
 
-type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+interface ApiRequestOptions {
+  method?: RequestMethod;
+  data?: unknown;
+}
 
 export async function apiRequest<TData = unknown>(
   url: string,
-  method: RequestMethod = "GET",
-  data?: unknown,
+  options: ApiRequestOptions | RequestMethod = "GET",
 ): Promise<TData> {
-  const options: RequestInit = {
+  // Handle both old and new API
+  const method = typeof options === 'string' ? options : (options.method || "GET");
+  const data = typeof options === 'object' ? options.data : undefined;
+
+  const requestOptions: RequestInit = {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
   };
 
-  const res = await fetch(url, options);
+  const res = await fetch(url, requestOptions);
 
   if (!res.ok) {
     let errorMessage = `Request failed: ${res.status} ${res.statusText}`;

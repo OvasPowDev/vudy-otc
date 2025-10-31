@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useAuth } from './useAuth';
 
 export interface Notification {
   id: string;
@@ -21,159 +23,51 @@ export interface Notification {
   actions?: Array<{ label: string; href?: string; type: string }>;
 }
 
-const STORAGE_KEY = 'app.notifications';
-const UNREAD_COUNT_KEY = 'app.notifications.unread';
-
 export const useNotifications = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
-  // Load notifications from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setNotifications(parsed);
-        setUnreadCount(parsed.filter((n: Notification) => !n.read).length);
-      } catch (e) {
-        console.error('Error parsing stored notifications:', e);
-      }
-    }
-  }, []);
+  // Fetch notifications from API
+  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+    queryKey: ['/api/notifications'],
+    enabled: !!user,
+    refetchInterval: 30000, // Poll every 30 seconds
+  });
 
-  // Save to localStorage whenever notifications change
-  useEffect(() => {
-    if (notifications.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications.slice(0, 500)));
-      const count = notifications.filter(n => !n.read).length;
-      setUnreadCount(count);
-      localStorage.setItem(UNREAD_COUNT_KEY, count.toString());
-    }
-  }, [notifications]);
+  const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleNewNotification = useCallback((notification: Notification) => {
-    console.log('New notification received:', notification);
-
-    // Add to list
-    setNotifications(prev => [notification, ...prev]);
-
-    // Show toast for pending transactions
-    if (notification.type === 'transaction.pending') {
-      toast.info(notification.title, {
-        description: notification.message,
-        duration: 5000,
+  // Mark notification as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      await apiRequest(`/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
       });
-    }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+  });
 
-    // Open modal for approved transactions
-    if (notification.type === 'transaction.approved') {
-      setSelectedNotification(notification);
-    }
-  }, []);
-
-  // Fetch initial notifications and set up realtime subscription
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (error) {
-        console.error('Error fetching notifications:', error);
-        return;
-      }
-
-      if (data) {
-        setNotifications(data.map(n => ({
-          id: n.id,
-          type: n.type as Notification['type'],
-          title: n.title,
-          message: n.message,
-          created_at: n.created_at,
-          read: n.read,
-          severity: n.severity as Notification['severity'],
-          source: n.source,
-          payload: n.payload as Notification['payload'],
-          actions: n.actions as Notification['actions']
-        })));
-      }
-    };
-
-    fetchNotifications();
-
-    // Set up realtime subscription
-    const channel = supabase
-      .channel('notifications-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications'
-        },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          handleNewNotification(newNotification);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [handleNewNotification]);
+  // Mark all as read mutation
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('/api/notifications/mark-all-read', {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+  });
 
   const markAsRead = useCallback(async (notificationId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', notificationId)
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error marking notification as read:', error);
-      return;
-    }
-
-    setNotifications(prev =>
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-    );
-  }, []);
+    await markAsReadMutation.mutateAsync(notificationId);
+  }, [markAsReadMutation]);
 
   const markAllAsRead = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
-    if (unreadIds.length === 0) return;
-
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .in('id', unreadIds)
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error marking all as read:', error);
-      return;
-    }
-
-    setNotifications(prev =>
-      prev.map(n => ({ ...n, read: true }))
-    );
-  }, [notifications]);
+    await markAllAsReadMutation.mutateAsync();
+  }, [markAllAsReadMutation]);
 
   const toggleDrawer = useCallback(() => {
     setIsDrawerOpen(prev => !prev);
@@ -182,6 +76,27 @@ export const useNotifications = () => {
   const closeModal = useCallback(() => {
     setSelectedNotification(null);
   }, []);
+
+  // Show toast for new notifications
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latestNotification = notifications[0];
+      const lastSeenId = localStorage.getItem('last_notification_id');
+      
+      if (latestNotification.id !== lastSeenId && !latestNotification.read) {
+        if (latestNotification.type === 'transaction.pending') {
+          toast.info(latestNotification.title, {
+            description: latestNotification.message,
+            duration: 5000,
+          });
+        } else if (latestNotification.type === 'transaction.approved') {
+          setSelectedNotification(latestNotification);
+        }
+        
+        localStorage.setItem('last_notification_id', latestNotification.id);
+      }
+    }
+  }, [notifications]);
 
   return {
     notifications,
@@ -192,5 +107,6 @@ export const useNotifications = () => {
     markAllAsRead,
     toggleDrawer,
     closeModal,
+    isLoading,
   };
 };

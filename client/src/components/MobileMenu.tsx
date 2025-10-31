@@ -1,7 +1,7 @@
 import { Home, FileText, Settings, LogOut, Moon, Sun, CreditCard } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { User } from "@lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sheet,
   SheetContent,
@@ -30,6 +30,7 @@ const getMenuItems = (t: (key: string) => string) => [
 ];
 
 export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMenuProps) {
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   
@@ -103,8 +104,8 @@ export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMe
     onLanguageChange(currentLanguage === 'es' ? 'en' : 'es');
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
+  const handleSignOut = () => {
+    logout();
     setOpen(false);
   };
 

@@ -37,7 +37,7 @@ export function registerRoutes(app: Express) {
         return res.status(200).json({ exists: false });
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return res.json({ exists: data.exists || false });
     } catch (error) {
       console.error('Error in auth-check-user:', error);
@@ -77,7 +77,7 @@ export function registerRoutes(app: Express) {
         return res.status(response.status).json({ error: 'Failed to send OTP', details: errorText });
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return res.json({ 
         success: data.success || false, 
         otpId: data.data?.otpId,
@@ -125,7 +125,7 @@ export function registerRoutes(app: Express) {
         return res.status(response.status).json({ error: 'Invalid or expired OTP', details: errorText });
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return res.json({ 
         success: data.success || false, 
         sessionToken: data.data?.session,
@@ -174,7 +174,7 @@ export function registerRoutes(app: Express) {
         return res.status(response.status).json({ error: 'Failed to onboard user', details: errorText });
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return res.json({ success: true, data });
     } catch (error) {
       console.error('Error in auth-onboard:', error);
@@ -226,6 +226,12 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/notifications/:id/read", async (req: Request, res: Response) => {
     await storage.markNotificationAsRead(req.params.id);
+    return res.json({ success: true });
+  });
+
+  app.post("/api/notifications/mark-all-read", async (req: Request, res: Response) => {
+    const userId = req.body.userId as string;
+    await storage.markAllNotificationsAsRead(userId);
     return res.json({ success: true });
   });
 

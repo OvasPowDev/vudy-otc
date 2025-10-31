@@ -26,6 +26,7 @@ export interface IStorage {
   // Notifications
   getNotifications(userId: string): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
 
   // Transactions
   getTransactions(userId?: string): Promise<Transaction[]>;
@@ -88,6 +89,10 @@ export class DbStorage implements IStorage {
 
   async markNotificationAsRead(id: string): Promise<void> {
     await db.update(notifications).set({ read: true }).where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
   }
 
   async getTransactions(userId?: string): Promise<Transaction[]> {

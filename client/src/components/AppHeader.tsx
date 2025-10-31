@@ -1,8 +1,6 @@
 import { Home, FileText, Settings, LogOut, CreditCard, Plus } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/components/UserProfile";
 import LanguageSelector from "@/components/LanguageSelector";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -12,12 +10,12 @@ import { NotificationDrawer } from "@/components/NotificationDrawer";
 import { TransactionApprovedModal } from "@/components/TransactionApprovedModal";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Language } from "@/lib/i18n";
+import { useAuth } from "@/hooks/useAuth";
 import vudyLogo from "@/assets/Logo_Vudy_OTC.png";
 import vudyLogoDark from "@/assets/Logo_Vudy_OTC_Dark.png";
 import { useEffect, useState } from "react";
 
 interface AppHeaderProps {
-  user: User;
   currentLanguage: Language;
   onLanguageChange: (lang: Language) => void;
   onCreateTransaction?: () => void;
@@ -30,9 +28,9 @@ const getMenuItems = (t: (key: string) => string) => [
   { title: t('menu.profile'), url: "/profile", icon: Settings },
 ];
 
-export function AppHeader({ user, currentLanguage, onLanguageChange, onCreateTransaction }: AppHeaderProps) {
+export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransaction }: AppHeaderProps) {
+  const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(false);
-  const [userName, setUserName] = useState<string>("");
   const {
     notifications,
     unreadCount,
@@ -87,30 +85,20 @@ export function AppHeader({ user, currentLanguage, onLanguageChange, onCreateTra
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("first_name, last_name")
-        .eq("id", user.id)
-        .maybeSingle();
+  const userName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}`.trim()
+    : user?.email?.split('@')[0] || "Usuario";
 
-      if (data?.first_name || data?.last_name) {
-        setUserName(`${data.first_name || ""} ${data.last_name || ""}`.trim());
-      } else {
-        setUserName(user.email?.split('@')[0] || "");
-      }
-    };
-
-    loadUserProfile();
-  }, [user]);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
+  const handleSignOut = () => {
+    logout();
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
-    <header className="h-16 border-b bg-background sticky top-0 z-50">
+    <header className="h-16 border-b bg-background sticky top-0 z-50" data-testid="header-app">
       <div className="h-full px-3 sm:px-6 flex items-center justify-between gap-2">
         {/* Left - Mobile Menu (Hamburger) + Desktop Logo */}
         <div className="flex items-center gap-2 lg:gap-3">
@@ -125,12 +113,13 @@ export function AppHeader({ user, currentLanguage, onLanguageChange, onCreateTra
             src={isDark ? vudyLogoDark : vudyLogo} 
             alt="VUDY OTC" 
             className="hidden lg:block h-8 sm:h-10 md:h-12" 
+            data-testid="img-logo-desktop"
           />
         </div>
 
         {/* Center - User Name (mobile) / Desktop Navigation */}
         <div className="flex lg:hidden items-center justify-center flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+          <p className="text-sm font-medium truncate" data-testid="text-username-mobile">
             {userName}
           </p>
         </div>
@@ -148,6 +137,7 @@ export function AppHeader({ user, currentLanguage, onLanguageChange, onCreateTra
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 }`
               }
+              data-testid={`link-${item.title.toLowerCase()}`}
             >
               <item.icon className="h-4 w-4" />
               <span className="text-sm font-medium">{item.title}</span>
@@ -162,6 +152,7 @@ export function AppHeader({ user, currentLanguage, onLanguageChange, onCreateTra
             src={isDark ? vudyLogoDark : vudyLogo} 
             alt="VUDY OTC" 
             className="lg:hidden h-8 sm:h-10" 
+            data-testid="img-logo-mobile"
           />
           
           {/* Desktop Controls */}
@@ -172,6 +163,7 @@ export function AppHeader({ user, currentLanguage, onLanguageChange, onCreateTra
                 size="sm"
                 onClick={onCreateTransaction}
                 className="gap-2"
+                data-testid="button-create-transaction"
               >
                 <Plus className="h-4 w-4" />
                 <span>Crear Transacción</span>
@@ -189,6 +181,7 @@ export function AppHeader({ user, currentLanguage, onLanguageChange, onCreateTra
               size="icon"
               onClick={handleSignOut}
               className="text-muted-foreground hover:text-foreground"
+              data-testid="button-logout"
             >
               <LogOut className="h-4 w-4" />
             </Button>

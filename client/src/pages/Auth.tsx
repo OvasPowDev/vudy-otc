@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +12,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { OnlineOperators } from "@/components/OnlineOperators";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useAuth } from "@/hooks/useAuth";
 
 const countries = [
   { code: "AR", name: "Argentina", flag: "🇦🇷" },
@@ -37,6 +37,7 @@ const countries = [
 const Auth = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
+  const { user, login } = useAuth();
   const [isDark, setIsDark] = useState(false);
   const [loading, setLoading] = useState(false);
   
@@ -57,43 +58,6 @@ const Auth = () => {
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  // Bypass login for jose@jose.com
-  const handleBypassLogin = async () => {
-    setLoading(true);
-    try {
-      const testEmail = "jose@jose.com";
-      
-      const { data, error } = await supabase.functions.invoke('auth-dev-bypass', {
-        body: { email: testEmail }
-      });
-
-      if (error) throw error;
-
-      if (data?.access_token) {
-        // Extract token from magic link
-        const url = new URL(data.access_token);
-        const token = url.searchParams.get('token');
-        
-        if (token) {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'magiclink'
-          });
-
-          if (verifyError) throw verifyError;
-          
-          toast.success('Login exitoso como Jose');
-          navigate("/");
-        }
-      }
-    } catch (error: any) {
-      console.error('Bypass login error:', error);
-      toast.error(error.message || 'Error en login automático');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     const checkTheme = () => {
       setIsDark(document.documentElement.classList.contains('dark'));
@@ -105,12 +69,10 @@ const Auth = () => {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        navigate("/");
-      }
-    });
-  }, [navigate]);
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     if (step === "otp" && timer > 0) {
@@ -133,23 +95,23 @@ const Auth = () => {
 
   const onboardUser = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('auth-onboard', {
-        body: {
+      const response = await fetch('/api/auth/onboard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           firstName,
           lastName,
           email,
           country,
           username: generateUsername(email),
-        },
+        }),
       });
 
-      if (error) {
-        console.error("❌ Error onboarding user:", error);
-        toast.error('No se pudo crear la cuenta');
-        return false;
-      }
+      const data = await response.json();
 
-      if (!data || data.error) {
+      if (!response.ok || data.error) {
         console.error("❌ Error onboarding user:", data);
         toast.error(data?.error?.message || 'No se pudo crear la cuenta');
         return false;
@@ -165,15 +127,21 @@ const Auth = () => {
 
   const sendOTP = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('auth-send-otp', {
-        body: {
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           email,
           language: language === "es" ? "es" : "en",
-        },
+        }),
       });
 
-      if (error) {
-        console.error("❌ Error sending OTP:", error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("❌ Error sending OTP:", data);
         return { success: false, data: null };
       }
 
@@ -213,70 +181,21 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // TEMPORARY: Bypass for omar@omar.com - direct access without password
-      if (email === 'omar@omar.com') {
-        console.warn('⚠️ DEV MODE: Bypass for omar@omar.com - skipping registration/OTP');
-        
-        // Close all previous sessions
-        await supabase.auth.signOut({ scope: 'global' });
-        
-        // Try to sign in with dev password
-        const devPassword = 'vudy-dev-2025';
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password: devPassword,
-        });
-
-        // If login fails, create the account
-        if (signInError) {
-          console.log('Account does not exist, creating dev account...');
-          const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password: devPassword,
-            options: {
-              emailRedirectTo: `${window.location.origin}/`,
-              data: {
-                dev_account: true
-              }
-            },
-          });
-
-          if (signUpError) {
-            console.error('❌ Error creating dev account:', signUpError);
-            toast.error(`Error creando cuenta: ${signUpError.message}`);
-            setLoading(false);
-            return;
-          }
-
-          console.log('✅ Dev account created, signing in...');
-          
-          // Sign in with the newly created account
-          const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-            email,
-            password: devPassword,
-          });
-
-          if (retrySignInError) {
-            console.error('❌ Error signing in after account creation:', retrySignInError);
-            toast.error('Cuenta creada. Intenta de nuevo.');
-            setLoading(false);
-            return;
-          }
-        }
-        
-        console.log('✅ Dev bypass successful - Direct access granted');
+      // TEMPORARY: Bypass for jose@jose.com and omar@omar.com
+      if (email === 'jose@jose.com' || email === 'omar@omar.com') {
+        console.warn('⚠️ DEV MODE: Bypass for development emails');
+        login({ email, id: email, firstName: email.split('@')[0], lastName: 'Dev' });
         toast.success('Acceso directo habilitado');
-        // Navigation will happen automatically via onAuthStateChange
+        navigate("/");
         setLoading(false);
         return;
       }
 
-      // NEW FLOW: Try to send OTP first
+      // Try to send OTP first
       const result = await sendOTP();
 
-      // Check if OTP was sent successfully FIRST
+      // Check if OTP was sent successfully
       if (result.success && result.data?.otpId && result.data?.identifier) {
-        // User exists and OTP sent successfully
         toast.success(t('auth.success.otpSent'));
         setStep("otp");
         setTimer(60);
@@ -345,27 +264,25 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('auth-verify-otp', {
-        body: {
+      const response = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           email,
           otp,
           otpId,
           identifier,
           ...(selectedProfileId && { profileId: selectedProfileId })
-        },
+        }),
       });
 
-      if (error) {
-        console.error("❌ Error verifying OTP:", error);
-        toast.error('Ocurrió un problema al verificar el código');
-        setLoading(false);
-        return;
-      }
+      const data = await response.json();
 
-      if (!data?.success) {
+      if (!response.ok || !data?.success) {
         console.error("❌ Error verifying OTP:", data);
         
-        // Check if user not found
         if (data?.error?.code === 'USER_NOT_FOUND') {
           setIsNewUser(true);
           setStep("email");
@@ -379,62 +296,17 @@ const Auth = () => {
         return;
       }
       
-      // Store the session from Vudy
-      if (data?.sessionToken || data?.data?.session) {
-        const sessionToken = data.sessionToken || data.data.session;
-        localStorage.setItem('platform_session', sessionToken);
-        
-        // Store additional data if available
-        if (data?.data) {
-          localStorage.setItem('platform_user_data', JSON.stringify(data.data));
-        }
-        
-        // Create a consistent password for Supabase (short and secure)
-        const supabasePassword = `vudy-${email.split('@')[0]}-2025`;
-        
-        // Try to sign in to Supabase
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password: supabasePassword,
-        });
+      // Login successful
+      const userData = data.data?.user || { email, id: email };
+      login({
+        email: userData.email,
+        id: userData.id,
+        firstName: userData.firstName || firstName,
+        lastName: userData.lastName || lastName
+      });
 
-        if (signInError) {
-          console.log("Creating new Supabase account...");
-          const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password: supabasePassword,
-            options: {
-              emailRedirectTo: `${window.location.origin}/`,
-            },
-          });
-
-          if (signUpError) {
-            console.error("❌ Error creating Supabase account:", signUpError);
-            toast.error('Error al crear la sesión local');
-            setLoading(false);
-            return;
-          }
-
-          // After signup, sign in
-          const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-            email,
-            password: supabasePassword,
-          });
-
-          if (retrySignInError) {
-            console.error("❌ Error signing in after signup:", retrySignInError);
-            toast.error('Error al iniciar sesión');
-            setLoading(false);
-            return;
-          }
-        }
-
-        toast.success('¡Autenticación exitosa!');
-        navigate("/");
-      } else {
-        toast.error('No se recibió sesión válida');
-        setLoading(false);
-      }
+      toast.success('¡Autenticación exitosa!');
+      navigate("/");
     } catch (error) {
       console.error("❌ Exception during OTP verification:", error);
       toast.error('Ocurrió un problema al verificar el código');
@@ -482,7 +354,7 @@ const Auth = () => {
           </div>
 
           {step === "email" && !isNewUser && (
-            <form onSubmit={handleEmailSubmit} className="space-y-5">
+            <form onSubmit={handleEmailSubmit} className="space-y-5" data-testid="form-email-login">
               <div className="space-y-2">
                 <Label className="text-[14px] font-medium">
                   {t('auth.emailAddress')} <span className="text-destructive">*</span>
@@ -493,6 +365,7 @@ const Auth = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-12 border-border bg-background"
                   disabled={loading}
+                  data-testid="input-email"
                 />
               </div>
 
@@ -500,6 +373,7 @@ const Auth = () => {
                 type="submit"
                 className="w-full h-12 text-[15px] font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-full"
                 disabled={loading}
+                data-testid="button-continue"
               >
                 {loading ? t('auth.loading') : t('auth.continue')}
               </Button>
@@ -507,7 +381,7 @@ const Auth = () => {
           )}
 
           {step === "email" && isNewUser && (
-            <form onSubmit={handleNewUserSubmit} className="space-y-5">
+            <form onSubmit={handleNewUserSubmit} className="space-y-5" data-testid="form-register">
               <div className="space-y-2">
                 <Label className="text-[14px] font-medium">
                   {t('auth.emailAddress')} <span className="text-destructive">*</span>
@@ -517,6 +391,7 @@ const Auth = () => {
                   value={email}
                   disabled
                   className="h-12 border-border bg-muted"
+                  data-testid="input-email-disabled"
                 />
               </div>
 
@@ -530,6 +405,7 @@ const Auth = () => {
                   onChange={(e) => setFirstName(e.target.value)}
                   className="h-12 border-border bg-background"
                   disabled={loading}
+                  data-testid="input-firstname"
                 />
               </div>
 
@@ -543,6 +419,7 @@ const Auth = () => {
                   onChange={(e) => setLastName(e.target.value)}
                   className="h-12 border-border bg-background"
                   disabled={loading}
+                  data-testid="input-lastname"
                 />
               </div>
 
@@ -551,7 +428,7 @@ const Auth = () => {
                   {t('auth.country')} <span className="text-destructive">*</span>
                 </Label>
                 <Select value={country} onValueChange={setCountry} disabled={loading}>
-                  <SelectTrigger className="h-12">
+                  <SelectTrigger className="h-12" data-testid="select-country">
                     <SelectValue placeholder={t('auth.selectCountry')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -579,6 +456,7 @@ const Auth = () => {
                   }}
                   className="flex-1 h-12 text-[15px] font-medium rounded-full"
                   disabled={loading}
+                  data-testid="button-back"
                 >
                   {t('auth.backToEmail')}
                 </Button>
@@ -586,6 +464,7 @@ const Auth = () => {
                   type="submit"
                   className="flex-1 h-12 text-[15px] font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-full"
                   disabled={loading}
+                  data-testid="button-register"
                 >
                   {loading ? t('auth.loading') : t('auth.continue')}
                 </Button>
@@ -594,7 +473,7 @@ const Auth = () => {
           )}
 
           {step === "otp" && (
-            <form onSubmit={handleOTPVerification} className="space-y-8">
+            <form onSubmit={handleOTPVerification} className="space-y-8" data-testid="form-otp">
               <div className="space-y-4 text-center">
                 <div className="space-y-2">
                   <h2 className="text-xl font-semibold text-foreground">
@@ -605,7 +484,7 @@ const Auth = () => {
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg">
-                  <span className="text-sm font-medium text-foreground">{email}</span>
+                  <span className="text-sm font-medium text-foreground" data-testid="text-email">{email}</span>
                 </div>
               </div>
 
@@ -615,7 +494,7 @@ const Auth = () => {
                     Selecciona tu perfil <span className="text-destructive">*</span>
                   </Label>
                   <Select value={selectedProfileId} onValueChange={setSelectedProfileId} disabled={loading}>
-                    <SelectTrigger className="h-12">
+                    <SelectTrigger className="h-12" data-testid="select-profile">
                       <SelectValue placeholder="Selecciona un perfil" />
                     </SelectTrigger>
                     <SelectContent>
@@ -639,6 +518,7 @@ const Auth = () => {
                     value={otp}
                     onChange={setOtp}
                     disabled={loading}
+                    data-testid="input-otp"
                   >
                     <InputOTPGroup className="gap-3">
                       <InputOTPSlot index={0} className="h-14 w-14 text-lg border-2" />
@@ -657,31 +537,33 @@ const Auth = () => {
                 <div className="text-center space-y-3">
                   {!canResend && timer > 0 && (
                     <p className="text-sm text-muted-foreground">
-                      {t('auth.resendIn')} <span className="font-medium text-foreground">{timer}</span> {t('auth.seconds')}
+                      {t('auth.resendIn')} {timer}s
                     </p>
                   )}
-
+                  
                   {canResend && (
-                    <button
+                    <Button
                       type="button"
+                      variant="link"
                       onClick={handleResendOTP}
                       disabled={loading}
-                      className="text-sm font-medium text-primary hover:underline transition-colors"
+                      className="text-primary hover:text-primary/80"
+                      data-testid="button-resend"
                     >
                       {t('auth.resendCode')}
-                    </button>
+                    </Button>
                   )}
                 </div>
-              </div>
 
-              <div className="space-y-3">
                 <Button
                   type="submit"
                   className="w-full h-12 text-[15px] font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-full"
                   disabled={loading || otp.length !== 9}
+                  data-testid="button-verify"
                 >
-                  {loading ? t('auth.loading') : t('auth.verifyCode')}
+                  {loading ? t('auth.loading') : t('auth.verify')}
                 </Button>
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -690,60 +572,24 @@ const Auth = () => {
                     setOtp("");
                     setOtpId("");
                     setIdentifier("");
+                    setProfiles([]);
+                    setSelectedProfileId("");
                   }}
-                  className="w-full h-12 text-[15px] font-medium"
+                  className="w-full"
                   disabled={loading}
+                  data-testid="button-back-to-email"
                 >
                   {t('auth.backToEmail')}
                 </Button>
               </div>
             </form>
           )}
-
-          {/* Dev Bypass Button */}
-          <div className="mt-6 pt-6 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBypassLogin}
-              className="w-full h-10 text-sm font-medium"
-              disabled={loading}
-            >
-              🔓 Dev: Login as Jose
-            </Button>
-          </div>
         </div>
       </div>
 
-      {/* Right Side - Hero */}
-      <div className="hidden lg:flex items-center justify-center p-12 relative overflow-hidden bg-[hsl(var(--hero-dark))]">
-        <div className="absolute inset-0 bg-primary">
-          <div className="absolute inset-0 opacity-[0.15]" style={{
-            backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px)`,
-            backgroundSize: '32px 32px',
-            backgroundPosition: '0 0'
-          }} />
-        </div>
-
-        <div className="relative z-10 max-w-lg space-y-8 text-left px-8">
-          <h2 className="text-5xl font-bold text-white leading-[1.2]">
-            {t('auth.welcomeTitle').split('\n').map((line, i) => (
-              <span key={i}>
-                {line}
-                {i === 0 && <br />}
-              </span>
-            ))}
-          </h2>
-          <p className="text-lg text-white/80 leading-relaxed">
-            {t('auth.welcomeDescription')}
-          </p>
-          <div className="flex items-center gap-4 pt-4">
-            <OnlineOperators />
-            <p className="text-white/80 text-[15px]">
-              {t('auth.operatorsOnline')}
-            </p>
-          </div>
-        </div>
+      {/* Right Side - Online Operators */}
+      <div className="hidden lg:block bg-muted">
+        <OnlineOperators />
       </div>
     </div>
   );

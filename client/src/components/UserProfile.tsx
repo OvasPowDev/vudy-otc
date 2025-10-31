@@ -1,4 +1,4 @@
-import { User } from "@supabase/supabase-js";
+import { User } from "@lib/auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface UserProfileProps {

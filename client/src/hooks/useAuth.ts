@@ -11,6 +11,8 @@ export function useAuth() {
 
   return {
     user,
+    login: (userData: User) => authManager.setUser(userData),
+    logout: () => authManager.signOut(),
     signOut: () => authManager.signOut(),
     isAuthenticated: !!user,
   };
