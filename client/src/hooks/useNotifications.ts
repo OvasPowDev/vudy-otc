@@ -30,8 +30,8 @@ export const useNotifications = () => {
 
   // Fetch notifications from API
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications'],
-    enabled: !!user,
+    queryKey: [`/api/notifications?userId=${user?.id}`],
+    enabled: !!user?.id,
     refetchInterval: 30000, // Poll every 30 seconds
   });
 
@@ -45,7 +45,7 @@ export const useNotifications = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${user?.id}`] });
     },
   });
 
@@ -54,10 +54,11 @@ export const useNotifications = () => {
     mutationFn: async () => {
       await apiRequest('/api/notifications/mark-all-read', {
         method: 'POST',
+        data: { userId: user?.id },
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/notifications?userId=${user?.id}`] });
     },
   });
 

@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
 import { AppHeader } from "@/components/AppHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +15,9 @@ import { CountryPhoneInput } from "@/components/CountryPhoneInput";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 const countries = [
   "Argentina", "Bolivia", "Chile", "Colombia", "Costa Rica", "Ecuador", 
@@ -27,7 +28,7 @@ const countries = [
 const Profile = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [countryCode, setCountryCode] = useState("+54");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -39,200 +40,65 @@ const Profile = () => {
     country: z.string().optional(),
   });
 
-  // Schema para email
-  const emailSchema = z.object({
-    email: z.string()
-      .min(1, { message: t('auth.errors.emailRequired') })
-      .email({ message: t('auth.errors.emailInvalid') }),
-  });
-
-  // Schema para contraseña
-  const passwordSchema = z.object({
-    currentPassword: z.string()
-      .min(1, { message: t('auth.errors.passwordRequired') })
-      .min(6, { message: t('auth.errors.passwordTooShort') }),
-    newPassword: z.string()
-      .min(1, { message: t('auth.errors.passwordRequired') })
-      .min(6, { message: t('auth.errors.passwordTooShort') }),
-    confirmPassword: z.string()
-      .min(1, { message: t('auth.errors.confirmPasswordRequired') }),
-  }).refine((data) => data.newPassword === data.confirmPassword, {
-    message: t('auth.errors.passwordsDontMatch'),
-    path: ["confirmPassword"],
-  });
-
   const profileForm = useForm({
     resolver: zodResolver(profileSchema),
     mode: "onTouched",
     defaultValues: {
-      first_name: "",
-      last_name: "",
+      first_name: user?.firstName || "",
+      last_name: user?.lastName || "",
       country: "",
     },
   });
 
-  const emailForm = useForm({
-    resolver: zodResolver(emailSchema),
-    mode: "onTouched",
-    defaultValues: {
-      email: "",
-    },
+  // Fetch profile
+  const { data: profile } = useQuery({
+    queryKey: [`/api/profiles/${user?.id}`],
+    enabled: !!user?.id,
   });
 
-  const passwordForm = useForm({
-    resolver: zodResolver(passwordSchema),
-    mode: "onTouched",
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const fullPhone = phoneNumber ? `${countryCode} ${phoneNumber}` : "";
+      await apiRequest(`/api/profiles/${user?.id}`, {
+        method: 'PATCH',
+        data: { ...data, phone: fullPhone },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Perfil actualizado correctamente");
+      queryClient.invalidateQueries({ queryKey: [`/api/profiles/${user?.id}`] });
+    },
+    onError: (error: any) => {
+      toast.error("Error al actualizar perfil: " + error.message);
     },
   });
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (!session?.user) {
-          navigate("/auth");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/auth");
-      } else {
-        emailForm.setValue("email", session.user.email || "");
-        loadProfile(session.user.id);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  const loadProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        // Parse phone number into country code and number
-        const phone = data.phone || "";
-        const phoneMatch = phone.match(/^(\+\d+)\s*(.*)$/);
-        if (phoneMatch) {
-          setCountryCode(phoneMatch[1]);
-          setPhoneNumber(phoneMatch[2]);
-        } else {
-          setPhoneNumber(phone);
-        }
-
-        profileForm.reset({
-          first_name: data.first_name || "",
-          last_name: data.last_name || "",
-          country: data.country || "",
-        });
-      }
-    } catch (error: any) {
-      toast.error("Error al cargar el perfil: " + error.message);
-    }
-  };
 
   const handleProfileUpdate = async (data: any) => {
     if (!user) return;
-
+    setLoading(true);
     try {
-      setLoading(true);
-      const fullPhone = phoneNumber ? `${countryCode} ${phoneNumber}` : "";
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ ...data, phone: fullPhone })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      toast.success("Perfil actualizado correctamente");
-    } catch (error: any) {
-      toast.error("Error al actualizar perfil: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmailUpdate = async (data: any) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-
-      const { error } = await supabase.auth.updateUser({
-        email: data.email,
-      });
-
-      if (error) throw error;
-
-      toast.success("Email actualizado. Por favor verifica tu nuevo correo.");
-    } catch (error: any) {
-      toast.error("Error al actualizar email: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordUpdate = async (data: any) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-
-      // Verify current password by trying to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email || "",
-        password: data.currentPassword,
-      });
-
-      if (signInError) {
-        toast.error("La contraseña actual es incorrecta");
-        return;
-      }
-
-      const { error } = await supabase.auth.updateUser({
-        password: data.newPassword,
-      });
-
-      if (error) throw error;
-
-      toast.success("Contraseña actualizada correctamente");
-      passwordForm.reset();
-    } catch (error: any) {
-      toast.error("Error al actualizar contraseña: " + error.message);
+      await updateProfileMutation.mutateAsync(data);
     } finally {
       setLoading(false);
     }
   };
 
   if (!user) {
+    navigate("/auth");
     return null;
   }
 
   return (
     <div className="min-h-screen w-full flex flex-col">
       <AppHeader 
-        user={user} 
         currentLanguage={language} 
         onLanguageChange={setLanguage} 
       />
       <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-4xl mx-auto w-full">
         <div className="space-y-4 sm:space-y-6">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold">Perfil</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">Perfil</h2>
             <p className="text-sm sm:text-base text-muted-foreground">
               Gestiona tu información personal y configuración de cuenta
             </p>
@@ -246,7 +112,7 @@ const Profile = () => {
             </CardHeader>
             <CardContent>
               <Form {...profileForm}>
-                <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)} className="space-y-4">
+                <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)} className="space-y-4" data-testid="form-profile">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={profileForm.control}
@@ -255,7 +121,7 @@ const Profile = () => {
                         <FormItem>
                           <FormLabel>Nombre</FormLabel>
                           <FormControl>
-                            <Input placeholder="Tu nombre" {...field} />
+                            <Input placeholder="Tu nombre" {...field} data-testid="input-firstname" />
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -268,7 +134,7 @@ const Profile = () => {
                         <FormItem>
                           <FormLabel>Apellido</FormLabel>
                           <FormControl>
-                            <Input placeholder="Tu apellido" {...field} />
+                            <Input placeholder="Tu apellido" {...field} data-testid="input-lastname" />
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -294,7 +160,7 @@ const Profile = () => {
                         <FormLabel>País</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="select-country">
                               <SelectValue placeholder="Selecciona tu país" />
                             </SelectTrigger>
                           </FormControl>
@@ -311,7 +177,7 @@ const Profile = () => {
                     )}
                   />
 
-                  <Button type="submit" disabled={loading}>
+                  <Button type="submit" disabled={loading} data-testid="button-save">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Guardar Cambios
                   </Button>
@@ -322,105 +188,20 @@ const Profile = () => {
 
           <Separator />
 
-          {/* Email Change */}
+          {/* Email Information (Read-only for now) */}
           <Card>
             <CardHeader>
-              <CardTitle>Cambiar Email</CardTitle>
-              <CardDescription>Actualiza tu dirección de correo electrónico</CardDescription>
+              <CardTitle>Información de Cuenta</CardTitle>
+              <CardDescription>Tu email de acceso a la plataforma</CardDescription>
             </CardHeader>
             <CardContent>
-              <Form {...emailForm}>
-                <form onSubmit={emailForm.handleSubmit(handleEmailUpdate)} className="space-y-4">
-                  <FormField
-                    control={emailForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Nuevo Email <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="tu@email.com" {...field} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Actualizar Email
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-
-          <Separator />
-
-          {/* Password Change */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Cambiar Contraseña</CardTitle>
-              <CardDescription>Actualiza tu contraseña de acceso</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...passwordForm}>
-                <form onSubmit={passwordForm.handleSubmit(handlePasswordUpdate)} className="space-y-4">
-                  <FormField
-                    control={passwordForm.control}
-                    name="currentPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Contraseña Actual <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={passwordForm.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Nueva Contraseña <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={passwordForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Confirmar Nueva Contraseña <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Cambiar Contraseña
-                  </Button>
-                </form>
-              </Form>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={user.email} disabled data-testid="input-email" />
+                <p className="text-xs text-muted-foreground">
+                  Contacta a soporte para cambiar tu email
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
