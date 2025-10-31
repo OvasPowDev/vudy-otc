@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Vudy OTC Brand Colors */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+
+    /* Azul Profundo #0B3039 - Color primario de la marca */
+    --primary: 189 65% 13%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Gris claro #F5F5F5 - Color secundario */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 189 65% 13%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    /* Verde Teal #58D181 - Color de acento */
+    --accent: 146 56% 59%;
+    --accent-foreground: 189 65% 13%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 146 56% 59%;
+
+    --radius: 0.5rem;
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Sidebar usando colores de la marca */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 189 65% 13%;
+    --sidebar-primary: 189 65% 13%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 189 65% 13%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 146 56% 59%;
+  }
+
+  .dark {
+    /* Dark mode - Azul Profundo #0B3039 como base */
+    --background: 189 65% 8%;
+    --foreground: 0 0% 98%;
+
+    --card: 189 60% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 189 60% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Azul Profundo #0B3039 como primary en dark mode */
+    --primary: 189 65% 13%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 189 50% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 189 50% 15%;
+    --muted-foreground: 0 0% 70%;
+
+    /* Verde Teal #58D181 - Color de acento */
+    --accent: 146 56% 59%;
+    --accent-foreground: 189 65% 8%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 189 50% 18%;
+    --input: 189 50% 18%;
+    --ring: 146 56% 59%;
+    
+    --sidebar-background: 189 65% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 146 56% 59%;
+    --sidebar-primary-foreground: 189 65% 8%;
+    --sidebar-accent: 189 60% 13%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 189 50% 18%;
+    --sidebar-ring: 146 56% 59%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
