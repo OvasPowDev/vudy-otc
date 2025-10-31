@@ -6,7 +6,7 @@ export const transactionTypeEnum = pgEnum("transaction_type", ["Buy", "Sell"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "offer_made", "escrow_created", "completed"]);
 
 export const profiles = pgTable("profiles", {
-  id: uuid("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   email: text("email"),
   firstName: text("first_name"),
   lastName: text("last_name"),
@@ -89,7 +89,7 @@ export const otcOffers = pgTable("otc_offers", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const insertProfileSchema = createInsertSchema(profiles).omit({ createdAt: true, updatedAt: true });
+export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true, updatedAt: true });

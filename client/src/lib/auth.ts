@@ -13,7 +13,15 @@ class AuthManager {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        this.user = JSON.parse(storedUser);
+        const parsedUser = JSON.parse(storedUser);
+        // Validate that ID is a UUID, not an email (legacy sessions cleanup)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (parsedUser.id && uuidRegex.test(parsedUser.id)) {
+          this.user = parsedUser;
+        } else {
+          console.warn('Cleaning up legacy session with email as ID');
+          localStorage.removeItem('user');
+        }
       } catch (e) {
         localStorage.removeItem('user');
       }
