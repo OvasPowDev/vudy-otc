@@ -1,5 +1,5 @@
-import { Home, FileText, Settings, LogOut, CreditCard } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Home, FileText, Settings, LogOut, CreditCard, Wallet } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -11,20 +11,23 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { supabase } from "@/integrations/supabase/client";
+import { authManager } from "@/lib/auth";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Transactions", url: "/transactions", icon: FileText },
-  { title: "Accounts", url: "/accounts", icon: CreditCard },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Bank Accounts", url: "/bank-accounts", icon: CreditCard },
+  { title: "Wallets", url: "/wallets", icon: Wallet },
+  { title: "Profile", url: "/profile", icon: Settings },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await authManager.signOut();
+    navigate("/auth");
   };
 
   return (
