@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AppHeader } from "@/components/AppHeader";
+import { KanbanBoard } from "@/components/KanbanBoard";
+import { CreateTransactionDialog } from "@/components/CreateTransactionDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, ArrowDownRight, DollarSign, FileText } from "lucide-react";
@@ -12,6 +13,7 @@ export default function Index() {
   const { t, language, setLanguage } = useLanguage();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Redirect to auth if no user
   useEffect(() => {
@@ -30,7 +32,11 @@ export default function Index() {
   const buyOrders = transactions.filter(t => t.type?.toLowerCase() === 'buy').length;
   const sellOrders = transactions.filter(t => t.type?.toLowerCase() === 'sell').length;
   const completedTransactions = transactions.filter(t => t.status === 'completed');
-  const totalProcessed = completedTransactions.reduce((sum, t) => sum + (t.amountValue || 0), 0);
+  const totalProcessed = completedTransactions.reduce((sum, t) => sum + (parseFloat(t.amountValue) || 0), 0);
+
+  const handleTransactionCreated = () => {
+    setCreateDialogOpen(false);
+  };
 
   if (!user) {
     return null;
@@ -41,6 +47,7 @@ export default function Index() {
       <AppHeader 
         currentLanguage={language} 
         onLanguageChange={setLanguage}
+        onCreateTransaction={() => setCreateDialogOpen(true)}
       />
       <main className="flex-1 p-3 sm:p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
@@ -49,7 +56,7 @@ export default function Index() {
               {t('dashboard.title')}
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Bienvenido a tu hub de transacciones OTC
+              {t('dashboard.subtitle')}
             </p>
           </div>
 
@@ -124,104 +131,14 @@ export default function Index() {
             </Card>
           </div>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Acciones Rápidas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Button 
-                  onClick={() => navigate("/transactions")}
-                  className="w-full"
-                  data-testid="button-view-transactions"
-                >
-                  Ver Transacciones
-                </Button>
-                <Button 
-                  onClick={() => navigate("/bank-accounts")}
-                  variant="outline"
-                  className="w-full"
-                  data-testid="button-manage-banks"
-                >
-                  Gestionar Bancos
-                </Button>
-                <Button 
-                  onClick={() => navigate("/wallets")}
-                  variant="outline"
-                  className="w-full"
-                  data-testid="button-manage-wallets"
-                >
-                  Gestionar Wallets
-                </Button>
-                <Button 
-                  onClick={() => navigate("/profile")}
-                  variant="outline"
-                  className="w-full"
-                  data-testid="button-view-profile"
-                >
-                  Ver Perfil
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Kanban Board */}
+          <KanbanBoard />
 
-          {/* Recent Activity */}
-          {transactions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Actividad Reciente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {transactions.slice(0, 5).map((transaction) => (
-                    <div 
-                      key={transaction.id} 
-                      className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate("/transactions")}
-                    >
-                      <div className="flex items-center gap-3">
-                        {transaction.type?.toLowerCase() === 'buy' ? (
-                          <ArrowUpRight className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <ArrowDownRight className="h-5 w-5 text-red-600" />
-                        )}
-                        <div>
-                          <p className="font-medium">
-                            {transaction.type} {transaction.token}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {transaction.code || transaction.id.substring(0, 8)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">
-                          {transaction.amountValue} {transaction.token}
-                        </p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {transaction.status}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {transactions.length === 0 && (
-            <Card>
-              <CardContent className="pt-6 pb-6 text-center">
-                <p className="text-muted-foreground mb-4">
-                  No tienes transacciones todavía. ¡Crea tu primera transacción OTC!
-                </p>
-                <Button onClick={() => navigate("/transactions")}>
-                  Crear Transacción
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <CreateTransactionDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+            onTransactionCreated={handleTransactionCreated}
+          />
         </div>
       </main>
     </div>
