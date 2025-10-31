@@ -18,6 +18,15 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 - ✅ Server running correctly on port 5000 with no errors
 - ✅ All styles loading properly with complete Vudy OTC brand design
 
+### UI Reorganization (Oct 31, 2025 - Night)
+- ✅ Reorganized Dashboard (Index.tsx) to show KanbanBoard below statistics cards
+- ✅ Created TransactionsDataTable component for tabular view of transactions
+- ✅ Updated Transactions page to display data table instead of Kanban board
+- ✅ Maintained CreateTransactionDialog functionality in both pages via AppHeader
+- ✅ Added search and filter capabilities to TransactionsDataTable (by type, status, code/token)
+- ✅ Verified all translations remain correct in Spanish and English
+- ✅ Confirmed "Crear transacción" button works correctly on both pages
+
 ### Infrastructure & Backend
 - ✅ Converted Supabase schema to Drizzle ORM schema
 - ✅ Migrated Supabase Edge Functions to Express API routes  
