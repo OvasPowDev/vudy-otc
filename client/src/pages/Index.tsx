@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
 import { AppHeader } from "@/components/AppHeader";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { TransactionTotals } from "@/components/TransactionTotals";
@@ -10,78 +8,44 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CreateTransactionDialog } from "@/components/CreateTransactionDialog";
+import { useQuery } from "@tanstack/react-query";
 
 const Index = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [dateFilters, setDateFilters] = useState<DateFilterOptions>({
     period: 'last30',
     startDate: '',
     endDate: '',
   });
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Fetch transactions from API
+  const { data: transactions = [], isLoading: loading } = useQuery<any[]>({
+    queryKey: ['/api/transactions', dateFilters],
+    enabled: !!user && !!dateFilters.startDate && !!dateFilters.endDate,
+  });
 
   const totalCount = transactions.length;
-  const buyCount = transactions.filter(tx => tx.type === "Buy").length;
-  const sellCount = transactions.filter(tx => tx.type === "Sell").length;
+  const buyCount = transactions.filter((tx) => tx.type === "Buy").length;
+  const sellCount = transactions.filter((tx) => tx.type === "Sell").length;
 
   // Calculate totals from real transaction data
   const totalCrypto = transactions.reduce((sum, tx) => sum + (typeof tx.amount_value === 'string' ? parseFloat(tx.amount_value) : tx.amount_value), 0);
   const totalFiat = transactions.reduce((sum, tx) => sum + (typeof tx.amount_value === 'string' ? parseFloat(tx.amount_value) : tx.amount_value), 0);
 
   useEffect(() => {
-    if (user && dateFilters.startDate && dateFilters.endDate) {
-      fetchTransactions();
+    // TODO: Implement proper authentication check
+    // For now, we'll just set a placeholder user
+    // In production, this should check session/token from backend
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    } else {
+      // Temporarily allow access for development - set a mock user
+      setUser({ email: 'dev@example.com' });
     }
-  }, [user, dateFilters]);
-
-  const fetchTransactions = async () => {
-    try {
-      setLoading(true);
-      
-      // Convert dates to ISO strings with time boundaries
-      const startDateTime = `${dateFilters.startDate}T00:00:00.000Z`;
-      const endDateTime = `${dateFilters.endDate}T23:59:59.999Z`;
-      
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .gte('created_at', startDateTime)
-        .lte('created_at', endDateTime)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      setTransactions(data || []);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-      setTransactions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (!session?.user) {
-          navigate("/auth");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, [navigate]);
 
   if (!user) {
