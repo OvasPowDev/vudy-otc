@@ -7,6 +7,7 @@ export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "o
 
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(),
+  email: text("email"),
   firstName: text("first_name"),
   lastName: text("last_name"),
   phone: text("phone"),

@@ -183,6 +183,28 @@ export function registerRoutes(app: Express) {
   });
 
   // Profiles
+  app.post("/api/profiles/get-or-create", async (req: Request, res: Response) => {
+    const { email, firstName, lastName, country } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    let profile = await storage.getProfileByEmail(email);
+    
+    if (!profile) {
+      profile = await storage.createProfile({
+        email,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        country: country || null,
+        phone: null,
+      });
+    }
+    
+    return res.json(profile);
+  });
+
   app.get("/api/profiles/:id", async (req: Request, res: Response) => {
     const profile = await storage.getProfile(req.params.id);
     if (!profile) {

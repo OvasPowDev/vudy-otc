@@ -184,9 +184,26 @@ const Auth = () => {
       // TEMPORARY: Bypass for jose@jose.com and omar@omar.com
       if (email === 'jose@jose.com' || email === 'omar@omar.com') {
         console.warn('⚠️ DEV MODE: Bypass for development emails');
-        login({ email, id: email, firstName: email.split('@')[0], lastName: 'Dev' });
-        toast.success('Acceso directo habilitado');
-        navigate("/");
+        
+        const profileResponse = await fetch('/api/profiles/get-or-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            firstName: email.split('@')[0],
+            lastName: 'Dev',
+          }),
+        });
+        
+        if (profileResponse.ok) {
+          const profile = await profileResponse.json();
+          login({ email: profile.email, id: profile.id, firstName: profile.firstName, lastName: profile.lastName });
+          toast.success('Acceso directo habilitado');
+          navigate("/");
+        } else {
+          toast.error('Error al crear perfil de desarrollo');
+        }
+        
         setLoading(false);
         return;
       }
@@ -296,13 +313,30 @@ const Auth = () => {
         return;
       }
       
-      // Login successful
-      const userData = data.data?.user || { email, id: email };
+      // Login successful - get or create profile
+      const profileResponse = await fetch('/api/profiles/get-or-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          firstName: firstName || data.data?.user?.firstName,
+          lastName: lastName || data.data?.user?.lastName,
+          country,
+        }),
+      });
+      
+      if (!profileResponse.ok) {
+        toast.error('Error al crear perfil');
+        setLoading(false);
+        return;
+      }
+      
+      const profile = await profileResponse.json();
       login({
-        email: userData.email,
-        id: userData.id,
-        firstName: userData.firstName || firstName,
-        lastName: userData.lastName || lastName
+        email: profile.email,
+        id: profile.id,
+        firstName: profile.firstName,
+        lastName: profile.lastName
       });
 
       toast.success('¡Autenticación exitosa!');

@@ -13,6 +13,7 @@ import { eq, and, desc } from "drizzle-orm";
 export interface IStorage {
   // Profiles
   getProfile(id: string): Promise<Profile | undefined>;
+  getProfileByEmail(email: string): Promise<Profile | undefined>;
   createProfile(data: InsertProfile): Promise<Profile>;
   updateProfile(id: string, data: Partial<InsertProfile>): Promise<Profile | undefined>;
 
@@ -47,6 +48,11 @@ export interface IStorage {
 export class DbStorage implements IStorage {
   async getProfile(id: string): Promise<Profile | undefined> {
     const result = await db.select().from(profiles).where(eq(profiles.id, id));
+    return result[0];
+  }
+
+  async getProfileByEmail(email: string): Promise<Profile | undefined> {
+    const result = await db.select().from(profiles).where(eq(profiles.email, email));
     return result[0];
   }
 
