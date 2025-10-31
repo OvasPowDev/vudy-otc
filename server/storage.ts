@@ -99,7 +99,8 @@ export class DbStorage implements IStorage {
     if (userId) {
       return await db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt));
     }
-    return await db.select().from(transactions).where(eq(transactions.status, "pending")).orderBy(desc(transactions.createdAt));
+    // Return all transactions if no userId specified (for liquidators to view all)
+    return await db.select().from(transactions).orderBy(desc(transactions.createdAt));
   }
 
   async getTransaction(id: string): Promise<Transaction | undefined> {

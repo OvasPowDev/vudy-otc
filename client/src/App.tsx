@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import BankAccounts from "./pages/BankAccounts";
+import Wallets from "./pages/Wallets";
 import Transactions from "./pages/Transactions";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/accounts" element={<BankAccounts />} />
+            <Route path="/wallets" element={<Wallets />} />
             <Route path="/transactions" element={<Transactions />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -1,54 +1,18 @@
-import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Loader2, Copy, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 
 interface TransactionDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transactionId: string | null;
 }
-
-interface TransactionData {
-  id: string;
-  code: string;
-  user_id: string;
-  created_at: string;
-  offered_at: string | null;
-  approved_at: string | null;
-  completed_at: string | null;
-  type: "Buy" | "Sell";
-  direction: "CTF" | "FTC";
-  chain: string;
-  token: string;
-  amount_value: string;
-  amount_currency: string;
-  bank_account_id: string;
-  wallet_address: string;
-  status: "pending" | "offer_made" | "escrow_created" | "completed";
-  updated_at: string;
-}
-
-const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (status) {
-    case "completed":
-      return "default";
-    case "escrow_created":
-      return "default";
-    case "offer_made":
-      return "default";
-    case "pending":
-      return "secondary";
-    default:
-      return "outline";
-  }
-};
 
 const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
@@ -70,14 +34,6 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const getTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    Buy: "Compra (CTF)",
-    Sell: "Venta (FTC)",
-  };
-  return labels[type] || type;
-};
-
 const formatDateTime = (dateString: string | null): string => {
   if (!dateString) return "N/A";
   try {
@@ -87,10 +43,9 @@ const formatDateTime = (dateString: string | null): string => {
   }
 };
 
-const formatAmount = (value: string, currency: string): string => {
+const formatAmount = (value: number, currency: string): string => {
   try {
-    const numValue = parseFloat(value);
-    return `${currency} ${numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `${currency} ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   } catch {
     return `${currency} ${value}`;
   }
@@ -98,276 +53,136 @@ const formatAmount = (value: string, currency: string): string => {
 
 export function TransactionDetailModal({ open, onOpenChange, transactionId }: TransactionDetailModalProps) {
   const { t } = useLanguage();
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<TransactionData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [approving, setApproving] = useState(false);
 
-  useEffect(() => {
-    if (open && transactionId) {
-      fetchTransactionData();
-    } else {
-      setData(null);
-      setError(null);
-    }
-  }, [open, transactionId]);
+  // Fetch transaction data
+  const { data: transaction, isLoading, error } = useQuery<any>({
+    queryKey: [`/api/transactions/${transactionId}`],
+    enabled: !!transactionId && open,
+  });
 
-  const fetchTransactionData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const { data: transaction, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('id', transactionId)
-        .single();
+  // Fetch offers for this transaction
+  const { data: offers = [] } = useQuery<any[]>({
+    queryKey: [`/api/offers/transaction/${transactionId}`],
+    enabled: !!transactionId && open,
+  });
 
-      if (error) throw error;
-
-      if (transaction) {
-        setData(transaction as any);
-      } else {
-        throw new Error("Transacción no encontrada");
-      }
-    } catch (err) {
-      console.error("Error fetching transaction:", err);
-      setError("No se pudo cargar el detalle de la transacción");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copiado`);
-  };
-
-  const handleApprove = async () => {
-    if (!data) return;
-    
-    setApproving(true);
-    try {
-      // Get first offer for this transaction
-      const { data: offers, error: offersError } = await supabase
-        .from('otc_offers')
-        .select('id, user_id')
-        .eq('transaction_id', data.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-
-      if (offersError) throw offersError;
-      
-      if (!offers || offers.length === 0) {
-        toast.error('No hay ofertas para aprobar');
-        return;
-      }
-
-      const offer = offers[0];
-
-      // Update transaction status to escrow_created and set accepted user
-      const { error: updateError } = await supabase
-        .from('transactions')
-        .update({
-          status: 'escrow_created',
-          accepted_by_user_id: offer.user_id,
-          approved_at: new Date().toISOString()
-        })
-        .eq('id', data.id);
-
-      if (updateError) throw updateError;
-
-      toast.success('Transacción aprobada exitosamente');
-      await fetchTransactionData(); // Refresh data
-    } catch (err) {
-      console.error('Error approving transaction:', err);
-      toast.error('Error al aprobar la transacción');
-    } finally {
-      setApproving(false);
-    }
-  };
-
-  const InfoRow = ({ label, value, emphasis = false, copyable = false }: { 
-    label: string; 
-    value: string; 
-    emphasis?: boolean; 
-    copyable?: boolean;
-  }) => (
-    <div className="flex justify-between items-center gap-3 py-1.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <span className={`text-xs text-right ${emphasis ? "font-semibold text-foreground" : ""} ${copyable ? "font-mono" : ""}`}>
-          {value}
-        </span>
-        {copyable && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-5 w-5 p-0"
-            onClick={() => handleCopy(value, label)}
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-
-  if (!open) return null;
+  if (!transactionId) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <DialogTitle className="text-lg truncate">{data?.code || 'Detalle de Transacción'}</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">{data && getTypeLabel(data.type)}</p>
-            </div>
-            {data && (
-              <Badge className={`${getStatusColor(data.status)} shrink-0`}>
-                {getStatusLabel(data.status)}
-              </Badge>
-            )}
-          </div>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-transaction-detail">
+        <DialogHeader>
+          <DialogTitle className="text-lg">{t('transactionDetail.title')}</DialogTitle>
         </DialogHeader>
 
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-            <p className="text-xs text-muted-foreground">Cargando transacción...</p>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        )}
-
-        {error && (
-          <div className="flex flex-col items-center justify-center py-8">
-            <div className="rounded-full bg-destructive/10 p-2.5 mb-3">
-              <ExternalLink className="h-5 w-5 text-destructive" />
-            </div>
-            <p className="text-xs text-muted-foreground">{error}</p>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-destructive">Error al cargar la transacción</p>
           </div>
-        )}
-
-        {!loading && !error && data && (
-          <div className="grid md:grid-cols-2 gap-3">
-            {/* Columna Izquierda */}
-            <div className="space-y-3">
-              {/* Información General */}
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2 pt-3 px-3">
-                  <CardTitle className="text-sm font-semibold">Información General</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-0.5 px-3 pb-3">
-                  <InfoRow label="Código" value={data.code} copyable emphasis />
-                  <InfoRow label="Dirección" value={data.direction} />
-                  <InfoRow label="Estado" value={getStatusLabel(data.status)} />
-                </CardContent>
-              </Card>
-
-              {/* Fechas Importantes */}
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2 pt-3 px-3">
-                  <CardTitle className="text-sm font-semibold">Fechas Importantes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-0.5 px-3 pb-3">
-                  <InfoRow label="Creación" value={formatDateTime(data.created_at)} />
-                  {data.offered_at && <InfoRow label="Oferta" value={formatDateTime(data.offered_at)} />}
-                  {data.approved_at && <InfoRow label="Aprobación" value={formatDateTime(data.approved_at)} />}
-                  {data.completed_at && <InfoRow label="Completada" value={formatDateTime(data.completed_at)} />}
-                  <InfoRow label="Actualización" value={formatDateTime(data.updated_at)} />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Columna Derecha */}
-            <div className="space-y-3">
-              {/* Detalles y Montos */}
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2 pt-3 px-3">
-                  <CardTitle className="text-sm font-semibold">Detalles de Transacción</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-0.5 px-3 pb-3">
-                  <InfoRow 
-                    label="Monto" 
-                    value={formatAmount(data.amount_value, data.amount_currency)} 
-                    emphasis 
-                  />
-                  <InfoRow label="Token" value={data.token} emphasis />
-                  <InfoRow label="Cadena" value={data.chain} />
-                </CardContent>
-              </Card>
-
-              {/* Wallet */}
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2 pt-3 px-3">
-                  <CardTitle className="text-sm font-semibold">Wallet</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-0.5 px-3 pb-3">
-                  <InfoRow label="Address" value={data.wallet_address} copyable />
-                </CardContent>
-              </Card>
-
-              {/* Cuenta Bancaria */}
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2 pt-3 px-3">
-                  <CardTitle className="text-sm font-semibold">Cuenta Bancaria</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-0.5 px-3 pb-3">
-                  <InfoRow label="ID" value={data.bank_account_id} copyable />
-                </CardContent>
-              </Card>
-            </div>
+        ) : !transaction ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-muted-foreground">Transacción no encontrada</p>
           </div>
-        )}
+        ) : (
+          <div className="space-y-4">
+            {/* Transaction Info Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Información de la Transacción</CardTitle>
+                  <Badge className={getStatusColor(transaction.status)}>
+                    {getStatusLabel(transaction.status)}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Código</p>
+                    <p className="font-medium">{transaction.code || transaction.id.substring(0, 8)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Tipo</p>
+                    <p className="font-medium">{transaction.type === 'buy' ? 'Compra' : 'Venta'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Dirección</p>
+                    <p className="font-medium">{transaction.direction || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cadena</p>
+                    <p className="font-medium">{transaction.chain}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Token</p>
+                    <p className="font-medium">{transaction.token}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Monto</p>
+                    <p className="font-medium">{formatAmount(transaction.amountValue, transaction.amountCurrency)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-muted-foreground">Dirección de Wallet</p>
+                    <p className="font-mono text-xs break-all">{transaction.walletAddress}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Creada</p>
+                    <p className="text-xs">{formatDateTime(transaction.createdAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Actualizada</p>
+                    <p className="text-xs">{formatDateTime(transaction.updatedAt)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <DialogFooter className="flex-row items-center justify-between gap-2 pt-3">
-          <div className="flex items-center gap-2">
-            {data && data.status !== 'escrow_created' && data.status !== 'completed' && (
-              <Button 
-                variant="default" 
-                size="sm"
-                className="h-8 text-xs bg-green-600 hover:bg-green-700"
-                onClick={handleApprove}
-                disabled={approving}
-              >
-                {approving ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                    Aprobando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 mr-1.5" />
-                    Aprobar
-                  </>
-                )}
+            {/* Offers Card */}
+            {offers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ofertas ({offers.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {offers.map((offer: any) => (
+                      <div key={offer.id} className="p-3 bg-muted rounded-lg">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Monto</p>
+                            <p className="font-medium">{formatAmount(offer.amountValue, offer.amountCurrency)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">ETA</p>
+                            <p className="font-medium">{offer.etaMinutes} minutos</p>
+                          </div>
+                          {offer.notes && (
+                            <div className="col-span-2">
+                              <p className="text-xs text-muted-foreground">Notas</p>
+                              <p className="text-xs">{offer.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-close">
+                Cerrar
               </Button>
-            )}
-            {data && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={() => handleCopy(data.id, "ID")}
-                >
-                  <Copy className="h-3 w-3 mr-1.5" />
-                  ID
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={() => handleCopy(data.code, "Código")}
-                >
-                  <Copy className="h-3 w-3 mr-1.5" />
-                  Código
-                </Button>
-              </>
-            )}
+            </div>
           </div>
-          <Button size="sm" className="h-8" onClick={() => onOpenChange(false)}>Cerrar</Button>
-        </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

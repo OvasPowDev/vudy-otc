@@ -8,8 +8,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface CreateTransactionDialogProps {
   open: boolean;
@@ -26,33 +28,33 @@ interface BankAccount {
 
 interface Wallet {
   id: string;
+  name: string;
   chain: string;
-  token: string;
   address: string;
-  balance: string;
 }
 
 export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreated }: CreateTransactionDialogProps) {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [transactionType, setTransactionType] = useState<"FTC" | "CTF" | null>(null);
-  
-  // Mock data - simular cuentas bancarias
-  const [bankAccounts] = useState<BankAccount[]>([
-    { id: "1", bankName: "Nexa Banco GTQ", currency: "GTQ", accountNumber: "156416815561" },
-    { id: "2", bankName: "Banco Industrial USD", currency: "USD", accountNumber: "123456789" },
-  ]);
-  
-  // Mock data - simular wallets
-  const [wallets] = useState<Wallet[]>([
-    { id: "1", chain: "Polygon", token: "USDT", address: "0x216516518546461314", balance: "25,458.25" },
-    { id: "2", chain: "Ethereum", token: "USDC", address: "0x987654321098765432", balance: "10,250.50" },
-  ]);
 
-  const chains = ["Polygon", "Ethereum", "Binance Smart Chain"];
+  // Fetch bank accounts
+  const { data: bankAccounts = [] } = useQuery<BankAccount[]>({
+    queryKey: ['/api/bank-accounts', { userId: user?.id }],
+    enabled: !!user && open,
+  });
+
+  // Fetch wallets
+  const { data: wallets = [] } = useQuery<Wallet[]>({
+    queryKey: ['/api/wallets', { userId: user?.id }],
+    enabled: !!user && open,
+  });
+
+  const chains = ["Polygon", "Ethereum", "Binance Smart Chain", "Avalanche"];
   const tokens = ["USDT", "USDC", "DAI"];
   const currencies = ["GTQ", "USD", "MXN"];
 
-  // Esquema de validación para FTC (Fiat to Crypto)
+  // FTC Schema (Fiat to Crypto)
   const ftcSchema = z.object({
     bankAccount: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
     currency: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
@@ -66,7 +68,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
     walletAddress: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
   });
 
-  // Esquema de validación para CTF (Crypto to Fiat)
+  // CTF Schema (Crypto to Fiat)
   const ctfSchema = z.object({
     wallet: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
     amount: z.string()
@@ -100,109 +102,80 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
     },
   });
 
-  const getSelectedWallet = () => {
-    const walletId = ctfForm.watch("wallet");
-    return wallets.find(w => w.id === walletId);
-  };
-
-  const onSubmitFTC = async (data: any) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error(t('auth.errors.notAuthenticated'));
-        return;
-      }
-
-      const transactionCode = `FTC-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-      
-      const { error } = await supabase.from('transactions').insert([{
-        user_id: user.id,
-        type: 'Buy' as const,
-        amount_value: parseFloat(data.amount),
-        amount_currency: data.currency,
-        token: data.token,
-        wallet_address: data.walletAddress,
-        bank_account_id: data.bankAccount,
-        code: transactionCode,
-        direction: 'FTC',
-        chain: data.chain,
-        status: 'pending' as const,
-      }]);
-
-      if (error) {
-        console.error('Error creating transaction:', error);
-        toast.error(t('createTransaction.errorCreating'));
-        return;
-      }
-
+  // Create transaction mutation
+  const createTransactionMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest('/api/transactions', {
+        method: 'POST',
+        data,
+      });
+    },
+    onSuccess: () => {
       toast.success(t('createTransaction.successCreated'));
-      
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
       if (onTransactionCreated) {
         onTransactionCreated({});
       }
-      
-      onOpenChange(false);
-      ftcForm.reset();
-      setTransactionType(null);
-    } catch (error) {
-      console.error('Error:', error);
+      handleClose();
+    },
+    onError: (error: any) => {
+      console.error('Error creating transaction:', error);
       toast.error(t('createTransaction.errorCreating'));
+    },
+  });
+
+  const onSubmitFTC = async (data: any) => {
+    if (!user) {
+      toast.error(t('auth.errors.notAuthenticated'));
+      return;
     }
+
+    const transactionCode = `FTC-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+
+    await createTransactionMutation.mutateAsync({
+      userId: user.id,
+      type: 'buy',
+      amountValue: parseFloat(data.amount),
+      amountCurrency: data.currency,
+      token: data.token,
+      walletAddress: data.walletAddress,
+      bankAccountId: data.bankAccount,
+      code: transactionCode,
+      direction: 'FTC',
+      chain: data.chain,
+      status: 'pending',
+    });
   };
 
   const onSubmitCTF = async (data: any) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error(t('auth.errors.notAuthenticated'));
-        return;
-      }
-
-      const selectedWallet = wallets.find(w => w.id === data.wallet);
-      const selectedBank = bankAccounts.find(b => b.id === data.bankAccount);
-      
-      if (!selectedWallet || !selectedBank) {
-        toast.error(t('createTransaction.errorCreating'));
-        return;
-      }
-
-      const transactionCode = `CTF-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-      
-      const { error } = await supabase.from('transactions').insert([{
-        user_id: user.id,
-        type: 'Sell' as const,
-        amount_value: parseFloat(data.amount),
-        amount_currency: selectedBank.currency,
-        token: selectedWallet.token,
-        wallet_address: selectedWallet.address,
-        bank_account_id: data.bankAccount,
-        code: transactionCode,
-        direction: 'CTF',
-        chain: selectedWallet.chain,
-        status: 'pending' as const,
-      }]);
-
-      if (error) {
-        console.error('Error creating transaction:', error);
-        toast.error(t('createTransaction.errorCreating'));
-        return;
-      }
-
-      toast.success(t('createTransaction.successCreated'));
-      
-      if (onTransactionCreated) {
-        onTransactionCreated({});
-      }
-      
-      onOpenChange(false);
-      ctfForm.reset();
-      setTransactionType(null);
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error(t('createTransaction.errorCreating'));
+    if (!user) {
+      toast.error(t('auth.errors.notAuthenticated'));
+      return;
     }
+
+    const selectedWallet = wallets.find(w => w.id === data.wallet);
+    const selectedBank = bankAccounts.find(b => b.id === data.bankAccount);
+
+    if (!selectedWallet || !selectedBank) {
+      toast.error(t('createTransaction.errorCreating'));
+      return;
+    }
+
+    const transactionCode = `CTF-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+
+    await createTransactionMutation.mutateAsync({
+      userId: user.id,
+      type: 'sell',
+      amountValue: parseFloat(data.amount),
+      amountCurrency: selectedBank.currency,
+      token: 'USDT', // Default token, can be customized
+      walletAddress: selectedWallet.address,
+      bankAccountId: data.bankAccount,
+      code: transactionCode,
+      direction: 'CTF',
+      chain: selectedWallet.chain,
+      status: 'pending',
+    });
   };
 
   const handleClose = () => {
@@ -212,9 +185,14 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
     ctfForm.reset();
   };
 
+  const getSelectedWallet = () => {
+    const walletId = ctfForm.watch("wallet");
+    return wallets.find(w => w.id === walletId);
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" data-testid="dialog-create-transaction">
         <DialogHeader>
           <DialogTitle className="text-lg">{t('createTransaction.title')}</DialogTitle>
         </DialogHeader>
@@ -227,6 +205,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                 variant="outline"
                 className="h-24 flex flex-col gap-2"
                 onClick={() => setTransactionType("FTC")}
+                data-testid="button-select-ftc"
               >
                 <span className="text-2xl">💵</span>
                 <span className="text-sm font-semibold">FTC</span>
@@ -236,6 +215,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                 variant="outline"
                 className="h-24 flex flex-col gap-2"
                 onClick={() => setTransactionType("CTF")}
+                data-testid="button-select-ctf"
               >
                 <span className="text-2xl">🪙</span>
                 <span className="text-sm font-semibold">CTF</span>
@@ -245,7 +225,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
           </div>
         ) : transactionType === "FTC" ? (
           <Form {...ftcForm}>
-            <form onSubmit={ftcForm.handleSubmit(onSubmitFTC)} className="space-y-4">
+            <form onSubmit={ftcForm.handleSubmit(onSubmitFTC)} className="space-y-4" data-testid="form-ftc">
               <FormField
                 control={ftcForm.control}
                 name="bankAccount"
@@ -256,7 +236,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger className="h-9" data-testid="select-bank-account">
                           <SelectValue placeholder={t('createTransaction.selectAccount')} />
                         </SelectTrigger>
                       </FormControl>
@@ -283,7 +263,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger className="h-9" data-testid="select-currency">
                           <SelectValue placeholder={t('createTransaction.selectCurrency')} />
                         </SelectTrigger>
                       </FormControl>
@@ -312,6 +292,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                         placeholder={t('createTransaction.enterAmount')}
                         className="h-9"
                         {...field}
+                        data-testid="input-amount"
                       />
                     </FormControl>
                     <FormMessage className="text-xs" />
@@ -330,7 +311,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-9">
+                          <SelectTrigger className="h-9" data-testid="select-chain">
                             <SelectValue placeholder={t('createTransaction.selectChain')} />
                           </SelectTrigger>
                         </FormControl>
@@ -355,7 +336,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-9">
+                          <SelectTrigger className="h-9" data-testid="select-token">
                             <SelectValue placeholder={t('createTransaction.selectToken')} />
                           </SelectTrigger>
                         </FormControl>
@@ -384,6 +365,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                         placeholder="0x..."
                         className="h-9 font-mono text-sm"
                         {...field}
+                        data-testid="input-wallet-address"
                       />
                     </FormControl>
                     <FormMessage className="text-xs" />
@@ -392,18 +374,18 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
               />
 
               <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" variant="outline" onClick={handleClose} size="sm">
+                <Button type="button" variant="outline" onClick={handleClose} size="sm" data-testid="button-cancel">
                   {t('createTransaction.cancel')}
                 </Button>
-                <Button type="submit" size="sm" disabled={!ftcForm.formState.isValid}>
-                  {t('createTransaction.create')}
+                <Button type="submit" size="sm" disabled={!ftcForm.formState.isValid || createTransactionMutation.isPending} data-testid="button-submit">
+                  {createTransactionMutation.isPending ? t('auth.loading') : t('createTransaction.create')}
                 </Button>
               </div>
             </form>
           </Form>
         ) : (
           <Form {...ctfForm}>
-            <form onSubmit={ctfForm.handleSubmit(onSubmitCTF)} className="space-y-4">
+            <form onSubmit={ctfForm.handleSubmit(onSubmitCTF)} className="space-y-4" data-testid="form-ctf">
               <FormField
                 control={ctfForm.control}
                 name="wallet"
@@ -412,53 +394,35 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                     <FormLabel className="text-sm">
                       {t('createTransaction.fromWallet')} <span className="text-destructive">*</span>
                     </FormLabel>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Select onValueChange={(value) => {
-                        field.onChange(value);
-                        const wallet = wallets.find(w => w.id === value);
-                        if (wallet) {
-                          // Auto-populate chain and token based on selected wallet
-                        }
-                      }} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder={t('createTransaction.selectChain')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {wallets.map(wallet => (
-                            <SelectItem key={wallet.id} value={wallet.id}>
-                              {wallet.chain}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select disabled value={getSelectedWallet()?.token || ""}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder={t('createTransaction.selectToken')} />
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9" data-testid="select-wallet">
+                          <SelectValue placeholder={t('createTransaction.selectWallet')} />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={getSelectedWallet()?.token || "USDT"}>
-                            {getSelectedWallet()?.token || "Token"}
+                      </FormControl>
+                      <SelectContent>
+                        {wallets.map(wallet => (
+                          <SelectItem key={wallet.id} value={wallet.id} className="text-sm">
+                            {wallet.name} ({wallet.chain})
                           </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
 
               {getSelectedWallet() && (
-                <div className="bg-muted p-3 rounded-lg space-y-1">
-                  <Input
-                    value={getSelectedWallet()?.address}
-                    disabled
-                    className="h-8 text-xs font-mono bg-background"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('createTransaction.balance')}: {getSelectedWallet()?.token} {getSelectedWallet()?.balance}
-                  </p>
+                <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('createTransaction.chain')}:</span>
+                    <span className="font-medium">{getSelectedWallet()?.chain}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('createTransaction.address')}:</span>
+                    <span className="font-mono text-xs">{getSelectedWallet()?.address.substring(0, 10)}...</span>
+                  </div>
                 </div>
               )}
 
@@ -476,6 +440,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                         placeholder={t('createTransaction.enterAmount')}
                         className="h-9"
                         {...field}
+                        data-testid="input-amount"
                       />
                     </FormControl>
                     <FormMessage className="text-xs" />
@@ -493,14 +458,14 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger className="h-9" data-testid="select-bank-account">
                           <SelectValue placeholder={t('createTransaction.selectAccount')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {bankAccounts.map(account => (
                           <SelectItem key={account.id} value={account.id} className="text-sm">
-                            {account.bankName} ({account.accountNumber})
+                            {account.bankName} ({account.currency})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -511,11 +476,11 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
               />
 
               <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" variant="outline" onClick={handleClose} size="sm">
+                <Button type="button" variant="outline" onClick={handleClose} size="sm" data-testid="button-cancel">
                   {t('createTransaction.cancel')}
                 </Button>
-                <Button type="submit" size="sm" disabled={!ctfForm.formState.isValid}>
-                  {t('createTransaction.create')}
+                <Button type="submit" size="sm" disabled={!ctfForm.formState.isValid || createTransactionMutation.isPending} data-testid="button-submit">
+                  {createTransactionMutation.isPending ? t('auth.loading') : t('createTransaction.create')}
                 </Button>
               </div>
             </form>
