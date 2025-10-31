@@ -6,7 +6,9 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 
 ## Migration Status (Oct 31, 2025)
 
-Successfully migrated from Lovable's Supabase-based architecture to Replit's fullstack environment:
+✅ **MIGRATION COMPLETE** - Successfully migrated from Lovable's Supabase-based architecture to Replit's fullstack environment:
+
+### Infrastructure & Backend
 - ✅ Converted Supabase schema to Drizzle ORM schema
 - ✅ Migrated Supabase Edge Functions to Express API routes  
 - ✅ Replaced Supabase Auth with custom OTP-based authentication using Vudy API
@@ -15,14 +17,29 @@ Successfully migrated from Lovable's Supabase-based architecture to Replit's ful
 - ✅ Fixed server restart loop by configuring tsx to ignore vite config files
 - ✅ Configured Vite with `allowedHosts: true` for Replit environment
 - ✅ Created Supabase client stub to prevent initialization errors during migration
-- ✅ Implemented simple authentication system (authManager + useAuth hook)
-- ✅ Migrated Index.tsx to show basic dashboard without Supabase dependencies
-- ✅ Application now displays correctly in browser
 
-### In Progress
-- 🔄 Migrating remaining pages: Auth, Profile, BankAccounts, Transactions
-- 🔄 Migrating components: AppHeader, KanbanBoard, MakeOfferDialog, etc.
-- 🔄 Migrating hooks: useNotifications to use Express API
+### Frontend Components & Pages
+- ✅ Implemented custom authentication system (authManager + useAuth hook)
+- ✅ Migrated Index.tsx to show dashboard with Express API
+- ✅ Migrated Auth.tsx for OTP-based authentication with Vudy API
+- ✅ Migrated Profile.tsx to use TanStack Query + Express API
+- ✅ Migrated BankAccounts.tsx to use TanStack Query + Express API
+- ✅ Migrated Transactions.tsx (simplified version using Express API)
+- ✅ Migrated AppHeader.tsx to use useAuth hook
+- ✅ Migrated MobileMenu.tsx and UserProfile.tsx components
+- ✅ Migrated useNotifications hook with polling-based system (replaces Supabase realtime)
+
+### Key Design Decisions
+- Custom User type from auth.ts replaces Supabase User type throughout frontend
+- Polling-based notification system (30-second interval) instead of Supabase realtime subscriptions
+- Storage layer includes all CRUD operations for profiles, bank accounts, wallets, transactions, offers, and notifications
+- All queries properly scoped by userId to prevent cross-user data leaks
+- TanStack Query used for all server state management with proper cache invalidation
+
+### Known Limitations
+- Email and password update features removed (auth managed by Vudy API)
+- Simplified Transactions page (full kanban board and detailed transaction management not yet implemented)
+- No real-time features (using polling for notifications instead)
 
 # User Preferences
 
@@ -100,7 +117,7 @@ Preferred communication style: Simple, everyday language.
 6. Code verified via Vudy API (`/api/auth/verify-otp`)
 7. Session created using Supabase Auth
 
-**Session Management**: Supabase Auth handles session tokens and refresh tokens.
+**Session Management**: Custom session management using localStorage and in-memory state (authManager singleton).
 
 **Protected Routes**: Client-side route protection redirects unauthenticated users to `/auth`.
 
@@ -148,8 +165,6 @@ Preferred communication style: Simple, everyday language.
 - @dnd-kit: Accessible drag-and-drop for kanban board
 
 **Environment Variables Required**:
-- `DATABASE_URL`: PostgreSQL connection string
+- `DATABASE_URL`: PostgreSQL connection string (Neon)
 - `VUDY_API_KEY`: API key for Vudy authentication service
-- `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_ANON_KEY`: Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server-side only)
+- `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`: PostgreSQL connection details (auto-configured by Replit)
