@@ -24,7 +24,12 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 - ✅ Migrated Auth.tsx for OTP-based authentication with Vudy API
 - ✅ Migrated Profile.tsx to use TanStack Query + Express API
 - ✅ Migrated BankAccounts.tsx to use TanStack Query + Express API
-- ✅ Migrated Transactions.tsx (simplified version using Express API)
+- ✅ Created Wallets.tsx page for managing cryptocurrency wallets
+- ✅ Migrated Transactions.tsx with full Kanban board functionality
+- ✅ Migrated KanbanBoard.tsx with liquidator/requester views and transaction columns
+- ✅ Migrated CreateTransactionDialog.tsx for creating FTC/CTF transactions
+- ✅ Migrated MakeOfferDialog.tsx for making offers on transactions
+- ✅ Migrated TransactionDetailModal.tsx for viewing transaction details
 - ✅ Migrated AppHeader.tsx to use useAuth hook
 - ✅ Migrated MobileMenu.tsx and UserProfile.tsx components
 - ✅ Migrated useNotifications hook with polling-based system (replaces Supabase realtime)
@@ -33,13 +38,17 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 - Custom User type from auth.ts replaces Supabase User type throughout frontend
 - Polling-based notification system (30-second interval) instead of Supabase realtime subscriptions
 - Storage layer includes all CRUD operations for profiles, bank accounts, wallets, transactions, offers, and notifications
-- All queries properly scoped by userId to prevent cross-user data leaks
 - TanStack Query used for all server state management with proper cache invalidation
+- Kanban board displays liquidator view (all pending transactions) vs requester view (user's own transactions)
+- Backend GET /api/transactions supports optional userId parameter - omit for all transactions, provide for user-specific
+- Transaction search without userId filter allows liquidators to find and offer on any user's transactions
+- Query key alignment ensures cache invalidation properly refreshes UI after mutations
 
 ### Known Limitations
 - Email and password update features removed (auth managed by Vudy API)
-- Simplified Transactions page (full kanban board and detailed transaction management not yet implemented)
 - No real-time features (using polling for notifications instead)
+- Kanban board simplified without drag & drop functionality (transactions move via status updates)
+- MakeOfferDialog removed inline wallet/bank creation - users must use dedicated Wallets/BankAccounts pages
 
 # User Preferences
 
