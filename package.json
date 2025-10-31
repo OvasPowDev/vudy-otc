@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=.env --clear-screen=false server/index.ts",
+    "dev": "tsx watch --clear-screen=false server/index.ts",
     "build": "vite build",
-    "start": "NODE_ENV=production tsx --env-file=.env server/index.ts",
+    "start": "NODE_ENV=production tsx server/index.ts",
     "db:push": "drizzle-kit push",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -55,7 +55,7 @@
     "drizzle-orm": "^0.44.7",
     "drizzle-zod": "^0.8.3",
     "embla-carousel-react": "^8.6.0",
-    "express": "^5.1.0",
+    "express": "^4.21.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",

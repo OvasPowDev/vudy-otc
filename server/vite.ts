@@ -23,12 +23,12 @@ export async function setupVite(app: Express, server: Server) {
 
   app.use(vite.middlewares);
 
-  app.use("*", async (req, res, next) => {
+  app.get("*", async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
       let template = fs.readFileSync(
-        path.resolve(process.cwd(), "index.html"),
+        path.resolve(process.cwd(), "client/index.html"),
         "utf-8"
       );
       template = await vite.transformIndexHtml(url, template);
@@ -52,7 +52,7 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  app.use("*", (_req, res) => {
+  app.get("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
