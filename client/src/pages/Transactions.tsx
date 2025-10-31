@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AppHeader } from "@/components/AppHeader";
-import { KanbanBoard } from "@/components/KanbanBoard";
+import { TransactionsDataTable } from "@/components/TransactionsDataTable";
 import { CreateTransactionDialog } from "@/components/CreateTransactionDialog";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -12,15 +12,20 @@ export default function Transactions() {
   const { user } = useAuth();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  if (!user) {
-    navigate("/auth");
-    return null;
-  }
+  // Redirect to auth if no user
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
   const handleTransactionCreated = () => {
-    // The KanbanBoard will auto-refresh via TanStack Query
     setCreateDialogOpen(false);
   };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col">
@@ -37,12 +42,12 @@ export default function Transactions() {
                 {t('dashboard.transactions')}
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground">
-                Gestiona tus transacciones OTC
+                Gestiona tus transacciones OTC en formato de tabla
               </p>
             </div>
           </div>
 
-          <KanbanBoard />
+          <TransactionsDataTable />
 
           <CreateTransactionDialog
             open={createDialogOpen}
