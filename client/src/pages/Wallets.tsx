@@ -51,7 +51,7 @@ const Wallets = () => {
 
   const form = useForm({
     resolver: zodResolver(formSchema),
-    mode: "onTouched",
+    mode: "onChange",
     defaultValues: {
       name: "",
       address: "",
@@ -322,8 +322,13 @@ const Wallets = () => {
                 }} size="sm" data-testid="button-cancel">
                   {t('wallets.cancel')}
                 </Button>
-                <Button type="submit" size="sm" disabled={!form.formState.isValid} data-testid="button-submit">
-                  {t('wallets.add')}
+                <Button 
+                  type="submit" 
+                  size="sm" 
+                  disabled={createWalletMutation.isPending}
+                  data-testid="button-submit"
+                >
+                  {createWalletMutation.isPending ? (language === 'es' ? 'Agregando...' : 'Adding...') : t('wallets.add')}
                 </Button>
               </div>
             </form>
