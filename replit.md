@@ -78,6 +78,18 @@ Preferred communication style: Simple, everyday language.
 - ✅ **FTC Form Reorganization**: Bank account selection moved to top of form (above amount and ETA)
 - ✅ **Dynamic Currency**: Currency symbol automatically updates based on selected bank account for FTC transactions
 - ✅ **Supported Currencies**: GTQ (Q), USD ($), MXN ($), VES (Bs), COP ($), ARS ($)
+- ✅ **Bug Fix**: Corrected `amountValue` to send as string and `status` to send as 'open' when creating offers
+
+### Transaction Detail Modal Enhancements
+- ✅ **Title Update**: Changed from "Información de la Transacción" to "Transacción FTC/CTF - [Código]"
+- ✅ **Offers Section**: Renamed to "Tu oferta" (singular)
+- ✅ **Enhanced Offer Details**: 
+  - Shows bank account information (name and account number) for FTC offers
+  - Displays "Monto ofrecido" with currency
+  - Shows "Tiempo de transacción" (ETA in minutes)
+  - **Time Tracking**: Calculates and displays time elapsed from transaction creation to offer submission
+  - **Offer Age**: Shows how long ago the offer was made (format: Xd Xh Xm)
+  - Improved layout with better information hierarchy
 
 ### Dashboard Translation Fixes
 - ✅ Fixed missing translations for dashboard statistics cards (totalTransactions, buyOrders, sellOrders, totalProcessed)

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, formatDistanceToNow, differenceInMinutes, differenceInHours, differenceInDays } from "date-fns";
+import { es } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 
 interface TransactionDetailModalProps {
@@ -51,6 +52,27 @@ const formatAmount = (value: number, currency: string): string => {
   }
 };
 
+const getTimeElapsed = (fromDate: string, toDate?: string): string => {
+  try {
+    const from = new Date(fromDate);
+    const to = toDate ? new Date(toDate) : new Date();
+    
+    const days = differenceInDays(to, from);
+    const hours = differenceInHours(to, from) % 24;
+    const minutes = differenceInMinutes(to, from) % 60;
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  } catch {
+    return "N/A";
+  }
+};
+
 export function TransactionDetailModal({ open, onOpenChange, transactionId }: TransactionDetailModalProps) {
   const { t } = useLanguage();
 
@@ -64,6 +86,12 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
   const { data: offers = [] } = useQuery<any[]>({
     queryKey: [`/api/offers/transaction/${transactionId}`],
     enabled: !!transactionId && open,
+  });
+
+  // Fetch bank accounts to show bank names in offers
+  const { data: bankAccounts = [] } = useQuery<any[]>({
+    queryKey: ['/api/bank-accounts'],
+    enabled: open && offers.some((o: any) => o.bankAccountId),
   });
 
   if (!transactionId) {
@@ -95,7 +123,9 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Información de la Transacción</CardTitle>
+                  <CardTitle className="text-base">
+                    Transacción {transaction.type === 'buy' ? 'FTC' : 'CTF'} - {transaction.code || transaction.id.substring(0, 8)}
+                  </CardTitle>
                   <Badge className={getStatusColor(transaction.status)}>
                     {getStatusLabel(transaction.status)}
                   </Badge>
@@ -147,30 +177,51 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
             {offers.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Ofertas ({offers.length})</CardTitle>
+                  <CardTitle className="text-base">Tu oferta</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {offers.map((offer: any) => (
-                      <div key={offer.id} className="p-3 bg-muted rounded-lg">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Monto</p>
-                            <p className="font-medium">{formatAmount(offer.amountValue, offer.amountCurrency)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">ETA</p>
-                            <p className="font-medium">{offer.etaMinutes} minutos</p>
-                          </div>
-                          {offer.notes && (
-                            <div className="col-span-2">
-                              <p className="text-xs text-muted-foreground">Notas</p>
-                              <p className="text-xs">{offer.notes}</p>
+                  <div className="space-y-3">
+                    {offers.map((offer: any) => {
+                      const bankAccount = bankAccounts.find((b: any) => b.id === offer.bankAccountId);
+                      const timeToOffer = getTimeElapsed(transaction.createdAt, offer.createdAt);
+                      const offerAge = getTimeElapsed(offer.createdAt);
+                      
+                      return (
+                        <div key={offer.id} className="p-4 bg-muted rounded-lg space-y-3">
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            {bankAccount && (
+                              <div className="col-span-2">
+                                <p className="text-xs text-muted-foreground">Banco</p>
+                                <p className="font-medium">{bankAccount.bankName} - {bankAccount.accountNumber}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs text-muted-foreground">Monto ofrecido</p>
+                              <p className="font-medium">{formatAmount(parseFloat(offer.amountValue), offer.amountCurrency)}</p>
                             </div>
-                          )}
+                            <div>
+                              <p className="text-xs text-muted-foreground">Tiempo de transacción</p>
+                              <p className="font-medium">{offer.etaMinutes} minutos</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Tiempo hasta oferta</p>
+                              <p className="font-medium">{timeToOffer}</p>
+                              <p className="text-xs text-muted-foreground">Desde creación de transacción</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Oferta hecha hace</p>
+                              <p className="font-medium">{offerAge}</p>
+                            </div>
+                            {offer.notes && (
+                              <div className="col-span-2">
+                                <p className="text-xs text-muted-foreground">Notas</p>
+                                <p className="text-xs">{offer.notes}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
