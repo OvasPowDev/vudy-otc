@@ -1,0 +1,174 @@
+{
+  "feature_id": "ui.kanban.realtime.sse",
+  "goal": "Actualizar el Kanban en tiempo real sin refrescar la pantalla cuando se inserte o cambie una transacción en la base de datos, manteniendo filtros de tipo/fecha y las columnas (created/settled/failed) intactas.",
+  "files_touched_max": 2,
+  "notes": {
+    "why_sse": "Server-Sent Events (SSE) es más liviano que WebSockets, sin dependencias extra y suficiente para push unidireccional.",
+    "auth_simple": "SSE no permite headers personalizados en la mayoría de navegadores. Usar ?streamKey= o cookie de sesión. Aquí usamos STREAM_KEY opcional por query."
+  },
+  "env_vars_optional": [
+    "STREAM_KEY=stream-dev (opcional, si se requiere validar el stream)"
+  ],
+  "server_patch": {
+    "file": "index.js",
+    "insert_after": "const PORT = process.env.PORT || 3000;",
+    "snippet": [
+      "const STREAM_KEY = process.env.STREAM_KEY || '';",
+      "const clients = new Set();",
+      "",
+      "function sseWrite(res, event, payload){",
+      "  res.write(`event: ${event}\\n`);",
+      "  res.write(`data: ${JSON.stringify(payload)}\\n\\n`);",
+      "}",
+      "",
+      "// Endpoint SSE",
+      "app.get('/events', (req, res) => {",
+      "  if (STREAM_KEY && req.query.streamKey !== STREAM_KEY){",
+      "    return res.status(401).end();",
+      "  }",
+      "  res.setHeader('Content-Type', 'text/event-stream');",
+      "  res.setHeader('Cache-Control', 'no-cache, no-transform');",
+      "  res.setHeader('Connection', 'keep-alive');",
+      "  res.flushHeaders?.();",
+      "  res.write(': ok\\n\\n'); // comentario para abrir el stream",
+      "  clients.add(res);",
+      "  // Heartbeat cada 25s para mantener vivo el stream",
+      "  const hb = setInterval(()=>{ try{ res.write(`: hb ${Date.now()}\\n\\n`); }catch{} }, 25000);",
+      "  req.on('close', ()=>{ clearInterval(hb); clients.delete(res); });",
+      "});",
+      "",
+      "function broadcast(event, payload){",
+      "  for(const res of clients){",
+      "    try{ sseWrite(res, event, payload); }catch{ /* noop */ }",
+      "  }",
+      "}"
+    ]
+  },
+  "server_hooks": {
+    "on_create_tx": {
+      "replace_in": "app.post('/sim/tx', (req,res)=>{ ... });",
+      "hint": "Después de 'res.json(resp);' enviar evento",
+      "append_before_return": [
+        "broadcast('tx.created', resp);"
+      ]
+    },
+    "on_settle_tx": {
+      "replace_in": "app.post('/sim/tx/:id/settle', (req,res)=>{ ... });",
+      "append_before_return": [
+        "const payload = txResponse(tx);",
+        "broadcast('tx.updated', payload);"
+      ],
+      "note": "Si ya haces res.json(txResponse(tx));, reutiliza el objeto payload."
+    },
+    "on_fail_tx": {
+      "replace_in": "app.post('/sim/tx/:id/fail', (req,res)=>{ ... });",
+      "append_before_return": [
+        "const payload = txResponse(tx);",
+        "broadcast('tx.updated', payload);"
+      ]
+    }
+  },
+  "client_patch": {
+    "file": "src/pages/Kanban.tsx",
+    "replace_block": [
+      {
+        "find": "const [items, setItems] = useState<Tx[]>([]);",
+        "with": [
+          "const [items, setItems] = useState<Tx[]>([]);",
+          "const [byId, setById] = useState<Record<string, Tx>>({});"
+        ]
+      },
+      {
+        "find": "async function fetchData(){",
+        "with": [
+          "async function fetchData(){",
+          "  setLoading(true);",
+          "  try{",
+          "    const res = await fetch(`/api/transactions?${buildQuery()}`);",
+          "    const data = await res.json();",
+          "    const arr: Tx[] = data.items || [];",
+          "    const map: Record<string, Tx> = {};",
+          "    for(const t of arr) map[t.id] = t;",
+          "    setById(map);",
+          "    setItems(arr);",
+          "  } finally { setLoading(false); }",
+          "}"
+        ]
+      },
+      {
+        "find": "useEffect(()=>{",
+        "with": [
+          "// Refetch en cambios de filtro",
+          "useEffect(()=>{",
+          "  if(filters.datePreset==='range' && !(filters.from && filters.to)) return;",
+          "  fetchData();",
+          "  // eslint-disable-next-line react-hooks/exhaustive-deps",
+          "}, [filters.type, filters.datePreset, filters.from, filters.to]);"
+        ]
+      },
+      {
+        "find": "return (",
+        "prepend": [
+          "// Suscripción SSE para actualizaciones en tiempo real",
+          "useEffect(()=>{",
+          "  const params = new URLSearchParams();",
+          "  if(import.meta.env?.VITE_STREAM_KEY){ params.set('streamKey', import.meta.env.VITE_STREAM_KEY); }",
+          "  const es = new EventSource(`/events${params.toString() ? ('?' + params.toString()) : ''}`);",
+          "  const upsert = (tx: Tx)=>{",
+          "    // Si la tx no pasa filtros actuales (tipo/fecha), no tocar items",
+          "    const passType = (filters.type==='all') || (tx.type===filters.type);",
+          "    if(!passType) return;",
+          "    // Fecha: se evalúa contra createdAt",
+          "    const d = new Date(tx.createdAt);",
+          "    const now = new Date();",
+          "    const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - ((now.getDay()+6)%7)); startOfWeek.setHours(0,0,0,0);",
+          "    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);",
+          "    let passDate = true;",
+          "    if(filters.datePreset==='today'){",
+          "      const t0 = new Date(); t0.setHours(0,0,0,0); passDate = d >= t0;",
+          "    } else if(filters.datePreset==='this_week'){",
+          "      passDate = d >= startOfWeek;",
+          "    } else if(filters.datePreset==='this_month'){",
+          "      passDate = d >= startOfMonth;",
+          "    } else if(filters.datePreset==='range'){",
+          "      passDate = (!!filters.from && d >= new Date(filters.from)) && (!!filters.to && d <= new Date(filters.to + 'T23:59:59'));",
+          "    }",
+          "    if(!passDate) return;",
+          "    setById(prev=> ({...prev, [tx.id]: tx}));",
+          "    setItems(prev=> {",
+          "      const exists = prev.findIndex(x=>x.id===tx.id);",
+          "      if(exists>=0){",
+          "        const cp = prev.slice(); cp[exists] = tx; return cp;",
+          "      }",
+          "      return [tx, ...prev];",
+          "    });",
+          "  };",
+          "  es.addEventListener('tx.created', (e:any)=>{ try{ upsert(JSON.parse(e.data)); }catch{} });",
+          "  es.addEventListener('tx.updated', (e:any)=>{ try{ upsert(JSON.parse(e.data)); }catch{} });",
+          "  es.onerror = ()=>{ /* EventSource reintenta solo. No hacer nada para ahorrar recursos. */ };",
+          "  return ()=> es.close();",
+          "  // eslint-disable-next-line react-hooks/exhaustive-deps",
+          "}, [filters.type, filters.datePreset, filters.from, filters.to]);"
+        ]
+      }
+    ]
+  },
+  "render_logic": {
+    "by_column": "Derivar por status desde 'items' (igual que antes). Cada evento actualiza 'items' y por ende el Kanban re-renderiza sin refresh.",
+    "no_state_change_on_miss": "Si el evento no pasa filtros actuales, se ignora para ahorrar render."
+  },
+  "gwt": [
+    "Given el usuario está viendo /transactions con type=fiat_to_crypto When llega una nueva transacción de ese tipo Then aparece instantáneamente en la columna de su status.",
+    "Given el usuario tiene filtros de 'Esta semana' When llega una transacción fechada hoy Then se muestra sin recargar.",
+    "Given cambia status de una transacción a 'settled' en backend When se emite tx.updated Then el item se mueve de 'created' a 'settled' automáticamente."
+  ],
+  "perf": {
+    "transport": "SSE con heartbeat 25s",
+    "server_memory": "Set de respuestas abiertas; sin colas. Broadcast O(n) por evento.",
+    "client": "Sin librerías externas. No reconcilia si no pasa filtros."
+  },
+  "security": {
+    "stream_key": "Opcional ?streamKey= para /events. Si se usa, definir STREAM_KEY en servidor y VITE_STREAM_KEY en front.",
+    "rate_limit": "Mantener límites de escritura en endpoints de mutación; SSE es solo lectura."
+  }
+}

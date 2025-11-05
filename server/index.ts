@@ -7,6 +7,25 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// SSE Configuration
+const STREAM_KEY = process.env.STREAM_KEY || '';
+const clients = new Set<Response>();
+
+function sseWrite(res: Response, event: string, payload: any) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+export function broadcast(event: string, payload: any) {
+  for (const res of clients) {
+    try {
+      sseWrite(res, event, payload);
+    } catch {
+      // Client disconnected, will be cleaned up on 'close' event
+    }
+  }
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -38,6 +57,41 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // SSE Endpoint for real-time updates
+  app.get('/events', (req: Request, res: Response) => {
+    // Optional stream key validation
+    if (STREAM_KEY && req.query.streamKey !== STREAM_KEY) {
+      return res.status(401).end();
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    // Send initial comment to open the stream
+    res.write(': ok\n\n');
+
+    // Add client to the set
+    clients.add(res);
+
+    // Heartbeat to keep connection alive (every 25s)
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(`: hb ${Date.now()}\n\n`);
+      } catch {
+        // Connection closed, will be cleaned up
+      }
+    }, 25000);
+
+    // Clean up on disconnect
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      clients.delete(res);
+    });
+  });
+
   registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

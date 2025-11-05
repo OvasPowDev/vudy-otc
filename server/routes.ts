@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { 
   insertBankAccountSchema, insertTransactionSchema, insertWalletSchema, insertOtcOfferSchema 
 } from "@shared/schema";
+import { broadcast } from "./index";
 
 const VUDY_API_BASE = "https://api-stg.vudy.app/v1/auth";
 
@@ -282,6 +283,10 @@ export function registerRoutes(app: Express) {
   app.post("/api/transactions", async (req: Request, res: Response) => {
     const validated = insertTransactionSchema.parse(req.body);
     const transaction = await storage.createTransaction(validated);
+    
+    // Broadcast transaction created event to SSE clients
+    broadcast('tx.created', transaction);
+    
     return res.json(transaction);
   });
 
@@ -290,6 +295,10 @@ export function registerRoutes(app: Express) {
     if (!transaction) {
       return res.status(404).json({ error: "Transaction not found" });
     }
+    
+    // Broadcast transaction updated event to SSE clients
+    broadcast('tx.updated', transaction);
+    
     return res.json(transaction);
   });
 

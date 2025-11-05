@@ -9,6 +9,7 @@ import { KanbanFilters, type FilterValue } from "./KanbanFilters";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 
 interface OTCRequest {
   id: string;
@@ -297,6 +298,97 @@ export function KanbanBoard() {
     }
     refetch();
   }, [filters, refetch]);
+
+  // SSE subscription for real-time updates
+  useEffect(() => {
+    if (!user) return;
+
+    // Build EventSource URL with optional stream key
+    const params = new URLSearchParams();
+    if (import.meta.env.VITE_STREAM_KEY) {
+      params.set('streamKey', import.meta.env.VITE_STREAM_KEY);
+    }
+    const eventSourceUrl = `/events${params.toString() ? '?' + params.toString() : ''}`;
+    const eventSource = new EventSource(eventSourceUrl);
+
+    // Helper to check if transaction passes current filters
+    const passesFilters = (tx: any): boolean => {
+      // Type filter - map filter values to database values
+      // "fiat_to_crypto" (FTC) → type: "buy"
+      // "crypto_to_fiat" (CTF) → type: "sell"
+      let passType = filters.type === 'all';
+      if (!passType) {
+        if (filters.type === 'fiat_to_crypto') {
+          passType = tx.type === 'buy';
+        } else if (filters.type === 'crypto_to_fiat') {
+          passType = tx.type === 'sell';
+        }
+      }
+      if (!passType) return false;
+
+      // Date filter based on createdAt
+      const txDate = new Date(tx.createdAt);
+      const now = new Date();
+      
+      if (filters.datePreset === 'today') {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        return txDate >= startOfToday;
+      } else if (filters.datePreset === 'this_week') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+        startOfWeek.setHours(0, 0, 0, 0);
+        return txDate >= startOfWeek;
+      } else if (filters.datePreset === 'this_month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        return txDate >= startOfMonth;
+      } else if (filters.datePreset === 'range' && filters.from && filters.to) {
+        const fromDate = new Date(filters.from);
+        const toDate = new Date(filters.to + 'T23:59:59');
+        return txDate >= fromDate && txDate <= toDate;
+      }
+      
+      return true; // No date filter or 'all'
+    };
+
+    // Update cache with new/updated transaction
+    const updateTransactionCache = (tx: any) => {
+      if (!passesFilters(tx)) return;
+
+      // Invalidate queries to trigger refetch
+      queryClient.invalidateQueries({ queryKey: [buildQueryKey()] });
+      queryClient.invalidateQueries({ queryKey: ['/api/offers'] });
+    };
+
+    // Listen to transaction events
+    eventSource.addEventListener('tx.created', (e: MessageEvent) => {
+      try {
+        const transaction = JSON.parse(e.data);
+        updateTransactionCache(transaction);
+      } catch (error) {
+        console.error('Error processing tx.created event:', error);
+      }
+    });
+
+    eventSource.addEventListener('tx.updated', (e: MessageEvent) => {
+      try {
+        const transaction = JSON.parse(e.data);
+        updateTransactionCache(transaction);
+      } catch (error) {
+        console.error('Error processing tx.updated event:', error);
+      }
+    });
+
+    // Error handling (EventSource auto-reconnects)
+    eventSource.onerror = () => {
+      // EventSource will automatically attempt to reconnect
+    };
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      eventSource.close();
+    };
+  }, [user, filters.type, filters.datePreset, filters.from, filters.to]);
 
   return (
     <div className="space-y-4">
