@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Clock, FileText, Shield } from "lucide-react";
+import { Eye, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { TransactionDetailModal } from "./TransactionDetailModal";
 import { MakeOfferDialog } from "./MakeOfferDialog";
+import { TransactionFilters, TransactionFiltersValue } from "./TransactionFilters";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -18,13 +18,12 @@ interface OTCRequest {
   amount: string;
   date: string;
   offers: number;
-  status: "pending" | "offer_made" | "escrow_created" | "completed";
+  status: "pending" | "completed" | "failed";
   escrowSubStatus?: "waiting_deposit" | "deposit_approval";
   dbId?: string;
   walletAddress?: string;
   chain?: string;
   acceptedByUserId?: string | null;
-  myColumn?: "pending" | "offer_made" | "escrow_created";
   userId?: string;
 }
 
@@ -46,9 +45,9 @@ const getTimeAgo = (dateString: string) => {
 };
 
 const getColumns = (t: (key: string) => string) => [
-  { id: "pending", title: t('dashboard.pending'), color: "bg-slate-100 dark:bg-slate-800", icon: Clock },
-  { id: "offer_made", title: t('dashboard.offerMade'), color: "bg-blue-50 dark:bg-blue-950", icon: FileText },
-  { id: "escrow_created", title: t('dashboard.escrowCreated'), color: "bg-purple-50 dark:bg-purple-950", icon: Shield },
+  { id: "pending", title: t('dashboard.created'), color: "bg-slate-100 dark:bg-slate-800", icon: Clock },
+  { id: "completed", title: t('dashboard.settled'), color: "bg-green-50 dark:bg-green-950", icon: CheckCircle2 },
+  { id: "failed", title: t('dashboard.failed'), color: "bg-red-50 dark:bg-red-950", icon: XCircle },
 ];
 
 function RequestCard({ request, columnColor, onOfferCreated }: { request: OTCRequest; columnColor: string; onOfferCreated: (requestId: string) => void }) {
@@ -119,7 +118,7 @@ function RequestCard({ request, columnColor, onOfferCreated }: { request: OTCReq
             </div>
           )}
           <div className="flex gap-2 pt-2">
-            {request.myColumn === "pending" && (
+            {request.status === "pending" && (
               <Button 
                 size="sm" 
                 variant="outline" 
@@ -166,17 +165,35 @@ function RequestCard({ request, columnColor, onOfferCreated }: { request: OTCReq
   );
 }
 
-function Column({ column, requests, onOfferCreated }: { column: any; requests: OTCRequest[]; onOfferCreated: (requestId: string) => void }) {
+function Column({ column, requests, onOfferCreated, onHeaderClick, isFiltering }: { 
+  column: any; 
+  requests: OTCRequest[]; 
+  onOfferCreated: (requestId: string) => void;
+  onHeaderClick: (status: string) => void;
+  isFiltering: boolean;
+}) {
+  const { t } = useLanguage();
   const Icon = column.icon;
   
   return (
     <div className="flex-1 min-w-[320px]">
-      <div className="flex items-center gap-2 mb-4">
+      <div 
+        className="flex items-center gap-2 mb-4 cursor-pointer hover:opacity-70 transition-opacity"
+        onClick={() => onHeaderClick(column.id)}
+        role="button"
+        aria-label={`${t('dashboard.clickToFilter')} ${column.title}`}
+        data-testid={`column-header-${column.id}`}
+      >
         <Icon className="h-5 w-5 text-muted-foreground" />
         <h3 className="font-semibold">{column.title}</h3>
         <Badge variant="secondary" className="ml-auto">
           {requests.length}
         </Badge>
+        {isFiltering && (
+          <span className="text-xs text-blue-600 dark:text-blue-400">
+            {t('dashboard.filtering')}
+          </span>
+        )}
       </div>
       <div className="space-y-3">
         {requests.map(request => (
@@ -189,7 +206,7 @@ function Column({ column, requests, onOfferCreated }: { column: any; requests: O
         ))}
         {requests.length === 0 && (
           <div className="text-center text-sm text-muted-foreground py-8">
-            No hay transacciones en esta columna
+            {t('dashboard.noMoreTransactions')}
           </div>
         )}
       </div>
@@ -200,13 +217,33 @@ function Column({ column, requests, onOfferCreated }: { column: any; requests: O
 export function KanbanBoard() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [activeView, setActiveView] = useState<"liquidator" | "requester">("liquidator");
   const columns = getColumns(t);
+  
+  const [filters, setFilters] = useState<TransactionFiltersValue>({
+    type: 'all',
+    status: 'all',
+    datePreset: 'today',
+    from: null,
+    to: null,
+  });
 
-  // Fetch transactions
-  const { data: transactions = [], refetch } = useQuery<any[]>({
-    queryKey: ['/api/transactions'],
-    enabled: !!user,
+  // Build query params from filters
+  const buildQueryParams = () => {
+    const params = new URLSearchParams();
+    if (filters.type !== 'all') params.set('type', filters.type);
+    if (filters.status !== 'all') params.set('status', filters.status);
+    params.set('datePreset', filters.datePreset);
+    if (filters.datePreset === 'range') {
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
+    }
+    return params.toString();
+  };
+
+  // Fetch transactions with filters
+  const { data: transactions = [], refetch, isLoading } = useQuery<any[]>({
+    queryKey: ['/api/transactions', filters.type, filters.status, filters.datePreset, filters.from, filters.to],
+    enabled: !!user && (filters.datePreset !== 'range' || !!(filters.from && filters.to)),
   });
 
   // Fetch offers for transactions
@@ -219,24 +256,6 @@ export function KanbanBoard() {
   const formatTransactionFromDB = (transaction: any): OTCRequest => {
     // Count offers for this transaction
     const transactionOffers = allOffers.filter((o: any) => o.transactionId === transaction.id);
-    
-    // Determine myColumn based on user's role and transaction state
-    let myColumn: "pending" | "offer_made" | "escrow_created" | undefined;
-    
-    if (activeView === "liquidator") {
-      // For liquidators: pending if no offer made, offer_made if they have an offer
-      const myOffer = transactionOffers.find((o: any) => o.userId === user?.id);
-      if (myOffer) {
-        myColumn = "offer_made";
-      } else if (transaction.status === "pending") {
-        myColumn = "pending";
-      }
-    } else {
-      // For requesters: show their own transactions
-      if (transaction.userId === user?.id) {
-        myColumn = transaction.status;
-      }
-    }
 
     return {
       dbId: transaction.id,
@@ -247,58 +266,56 @@ export function KanbanBoard() {
       amount: `${transaction.amountValue} ${transaction.token}`,
       date: transaction.createdAt,
       offers: transactionOffers.length,
-      status: transaction.status,
+      status: transaction.status || "pending",
       walletAddress: transaction.walletAddress,
       chain: transaction.chain,
       acceptedByUserId: transaction.acceptedByUserId,
       userId: transaction.userId,
-      myColumn,
     };
   };
 
   const allRequests = transactions.map(formatTransactionFromDB);
 
-  // Filter requests based on view
-  const filteredRequests = activeView === "liquidator"
-    ? allRequests.filter(r => r.userId !== user?.id && r.myColumn) // Liquidator sees other users' transactions
-    : allRequests.filter(r => r.userId === user?.id); // Requester sees their own
-
   // Group by column
-  const groupedRequests = {
-    pending: filteredRequests.filter(r => r.myColumn === "pending"),
-    offer_made: filteredRequests.filter(r => r.myColumn === "offer_made"),
-    escrow_created: filteredRequests.filter(r => r.myColumn === "escrow_created"),
-  };
+  const groupedRequests = useMemo(() => {
+    return {
+      pending: allRequests.filter(r => r.status === "pending"),
+      completed: allRequests.filter(r => r.status === "completed"),
+      failed: allRequests.filter(r => r.status === "failed"),
+    };
+  }, [allRequests]);
 
   const handleOfferCreated = (requestId: string) => {
     refetch();
   };
 
+  const handleHeaderClick = (status: string) => {
+    setFilters(prev => ({
+      ...prev,
+      status: prev.status === status ? 'all' : (status as any),
+    }));
+  };
+
   return (
     <div className="space-y-4">
-      <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="liquidator" data-testid="tab-liquidator">
-            {t('dashboard.liquidatorView')}
-          </TabsTrigger>
-          <TabsTrigger value="requester" data-testid="tab-requester">
-            {t('dashboard.requesterView')}
-          </TabsTrigger>
-        </TabsList>
+      <TransactionFilters value={filters} onChange={setFilters} />
+      
+      {isLoading && (
+        <div className="text-sm text-muted-foreground">{t('dashboard.loading')}</div>
+      )}
 
-        <TabsContent value={activeView} className="mt-6">
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {columns.map(column => (
-              <Column
-                key={column.id}
-                column={column}
-                requests={groupedRequests[column.id as keyof typeof groupedRequests] || []}
-                onOfferCreated={handleOfferCreated}
-              />
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+      <div className="flex gap-4 overflow-x-auto pb-4">
+        {columns.map(column => (
+          <Column
+            key={column.id}
+            column={column}
+            requests={groupedRequests[column.id as keyof typeof groupedRequests] || []}
+            onOfferCreated={handleOfferCreated}
+            onHeaderClick={handleHeaderClick}
+            isFiltering={filters.status === column.id}
+          />
+        ))}
+      </div>
     </div>
   );
 }
