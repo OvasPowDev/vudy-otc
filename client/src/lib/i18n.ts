@@ -62,7 +62,15 @@ export const translations = {
       completed: "Transacción Completada",
       noMoreTransactions: "No hay más transacciones",
       totalCrypto: "Total Crypto",
-      totalFiat: "Total Fiat"
+      totalFiat: "Total Fiat",
+      liquidatorView: "Vista Proveedor",
+      requesterView: "Vista Solicitante",
+      totalTransactions: "Total Transacciones",
+      completedTransactions: "completadas",
+      buyOrders: "Órdenes de Compra",
+      sellOrders: "Órdenes de Venta",
+      totalProcessed: "Total Procesado",
+      inCompletedTransactions: "En transacciones completadas"
     },
     filters: {
       title: "Seleccionar rango personalizado",
@@ -310,7 +318,15 @@ export const translations = {
       completed: "Transaction Completed",
       noMoreTransactions: "No more transactions",
       totalCrypto: "Total Crypto",
-      totalFiat: "Total Fiat"
+      totalFiat: "Total Fiat",
+      liquidatorView: "Liquidity Provider View",
+      requesterView: "Requester View",
+      totalTransactions: "Total Transactions",
+      completedTransactions: "completed",
+      buyOrders: "Buy Orders",
+      sellOrders: "Sell Orders",
+      totalProcessed: "Total Processed",
+      inCompletedTransactions: "In completed transactions"
     },
     filters: {
       title: "Select custom range",

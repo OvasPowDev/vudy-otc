@@ -65,7 +65,7 @@ export default function Index() {
             <Card data-testid="card-total-transactions">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Transacciones
+                  {t('dashboard.totalTransactions')}
                 </CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -74,7 +74,7 @@ export default function Index() {
                   {transactions.length}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {completedTransactions.length} completadas
+                  {completedTransactions.length} {t('dashboard.completedTransactions')}
                 </p>
               </CardContent>
             </Card>
@@ -82,7 +82,7 @@ export default function Index() {
             <Card data-testid="card-buy-orders">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Órdenes de Compra
+                  {t('dashboard.buyOrders')}
                 </CardTitle>
                 <ArrowUpRight className="h-4 w-4 text-green-600" />
               </CardHeader>
@@ -91,7 +91,7 @@ export default function Index() {
                   {buyOrders}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Crypto → Fiat
+                  {t('createTransaction.cryptoToFiat')}
                 </p>
               </CardContent>
             </Card>
@@ -99,7 +99,7 @@ export default function Index() {
             <Card data-testid="card-sell-orders">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Órdenes de Venta
+                  {t('dashboard.sellOrders')}
                 </CardTitle>
                 <ArrowDownRight className="h-4 w-4 text-red-600" />
               </CardHeader>
@@ -108,7 +108,7 @@ export default function Index() {
                   {sellOrders}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Fiat → Crypto
+                  {t('createTransaction.fiatToCrypto')}
                 </p>
               </CardContent>
             </Card>
@@ -116,7 +116,7 @@ export default function Index() {
             <Card data-testid="card-total-processed">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Procesado
+                  {t('dashboard.totalProcessed')}
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -125,7 +125,7 @@ export default function Index() {
                   ${totalProcessed.toFixed(2)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  En transacciones completadas
+                  {t('dashboard.inCompletedTransactions')}
                 </p>
               </CardContent>
             </Card>
