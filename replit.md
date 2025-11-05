@@ -57,6 +57,15 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 - ✅ Faster testing workflow - select type, enter amount, create transaction
 - ✅ Auto-redirect to dashboard after successful transaction creation
 
+### Translation Improvements (Nov 05, 2025)
+- ✅ Added missing translations for CreateTransactionDialog (type, account, wallet, fiatToCrypto, cryptoToFiat)
+- ✅ Added error and success message translations (successCreated, errorCreating, invalidAmount, notAuthenticated)
+- ✅ Added complete Wallets page translations (title, addWallet, walletAdded, walletDeleted, etc.)
+- ✅ Updated CreateTransactionDialog to use translations instead of hardcoded Spanish text
+- ✅ Updated AppHeader "Crear Transacción" button to use translations
+- ✅ Updated Wallets.tsx component to use translations throughout (titles, labels, buttons, messages)
+- ✅ All user-facing text now properly internationalized in both Spanish and English
+
 ### Infrastructure & Backend
 - ✅ Converted Supabase schema to Drizzle ORM schema
 - ✅ Migrated Supabase Edge Functions to Express API routes  
