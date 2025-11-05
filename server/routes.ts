@@ -260,7 +260,67 @@ export function registerRoutes(app: Express) {
   // Transactions
   app.get("/api/transactions", async (req: Request, res: Response) => {
     const userId = req.query.userId as string | undefined;
-    const transactions = await storage.getTransactions(userId);
+    const type = req.query.type as string | undefined;
+    const status = req.query.status as string | undefined;
+    const datePreset = req.query.datePreset as string | undefined;
+    const from = req.query.from as string | undefined;
+    const to = req.query.to as string | undefined;
+    
+    let transactions = await storage.getTransactions(userId);
+    
+    // Apply type filter
+    if (type && type !== 'all') {
+      transactions = transactions.filter((t: any) => {
+        if (type === 'buy') return t.type === 'buy';
+        if (type === 'sell') return t.type === 'sell';
+        return true;
+      });
+    }
+    
+    // Apply status filter
+    if (status && status !== 'all') {
+      transactions = transactions.filter((t: any) => t.status === status);
+    }
+    
+    // Apply date filter
+    if (datePreset && datePreset !== 'range') {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (datePreset) {
+        case 'today':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'this_week':
+          const dayOfWeek = now.getDay();
+          const diff = now.getDate() - dayOfWeek;
+          startDate = new Date(now.setDate(diff));
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'this_month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        default:
+          startDate = new Date(0);
+      }
+      
+      transactions = transactions.filter((t: any) => 
+        new Date(t.createdAt) >= startDate
+      );
+    }
+    
+    // Apply custom range filter
+    if (datePreset === 'range' && from && to) {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      
+      transactions = transactions.filter((t: any) => {
+        const txDate = new Date(t.createdAt);
+        return txDate >= fromDate && txDate <= toDate;
+      });
+    }
+    
     return res.json(transactions);
   });
 
