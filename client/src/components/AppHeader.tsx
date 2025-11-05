@@ -1,5 +1,5 @@
-import { Home, FileText, Settings, LogOut, CreditCard, Plus, Wallet } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Home, FileText, Settings, LogOut, CreditCard, Plus, Wallet, ChevronDown } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { UserProfile } from "@/components/UserProfile";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -14,6 +14,12 @@ import { useAuth } from "@/hooks/useAuth";
 import vudyLogo from "@/assets/Logo_Vudy_OTC.png";
 import vudyLogoDark from "@/assets/Logo_Vudy_OTC_Dark.png";
 import { useEffect, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface AppHeaderProps {
   currentLanguage: Language;
@@ -24,6 +30,9 @@ interface AppHeaderProps {
 const getMenuItems = (t: (key: string) => string) => [
   { title: t('menu.dashboard'), url: "/", icon: Home },
   { title: t('menu.transactions'), url: "/transactions", icon: FileText },
+];
+
+const getProfileSubmenu = (t: (key: string) => string) => [
   { title: t('menu.profile'), url: "/profile", icon: Settings },
   { title: t('menu.accounts'), url: "/accounts", icon: CreditCard },
   { title: t('menu.wallets'), url: "/wallets", icon: Wallet },
@@ -75,6 +84,10 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
   };
   
   const menuItems = getMenuItems(t);
+  const profileSubmenu = getProfileSubmenu(t);
+  const location = useLocation();
+  
+  const isProfileActive = ['/profile', '/accounts', '/wallets'].includes(location.pathname);
 
   useEffect(() => {
     const checkTheme = () => {
@@ -146,6 +159,38 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
               <span className="text-sm font-medium">{item.title}</span>
             </NavLink>
           ))}
+          
+          {/* Profile Dropdown Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                  isProfileActive
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="button-profile-menu"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="text-sm font-medium">{t('menu.profile')}</span>
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {profileSubmenu.map((item) => (
+                <DropdownMenuItem key={item.title} asChild>
+                  <NavLink
+                    to={item.url}
+                    className="flex items-center gap-2 cursor-pointer"
+                    data-testid={`link-${item.title.toLowerCase()}`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </NavLink>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         {/* Right - Logo (mobile) / Desktop controls */}

@@ -1,4 +1,4 @@
-import { Home, FileText, Settings, LogOut, Moon, Sun, CreditCard, Wallet } from "lucide-react";
+import { Home, FileText, Settings, LogOut, Moon, Sun, CreditCard, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { User } from "@lib/auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +25,9 @@ interface MobileMenuProps {
 const getMenuItems = (t: (key: string) => string) => [
   { title: t('menu.dashboard'), url: "/", icon: Home },
   { title: t('menu.transactions'), url: "/transactions", icon: FileText },
+];
+
+const getProfileSubmenu = (t: (key: string) => string) => [
   { title: t('menu.profile'), url: "/profile", icon: Settings },
   { title: t('menu.accounts'), url: "/accounts", icon: CreditCard },
   { title: t('menu.wallets'), url: "/wallets", icon: Wallet },
@@ -34,6 +37,7 @@ export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMe
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [profileExpanded, setProfileExpanded] = useState(false);
   
   // Create a simple t function that uses the translations directly
   const t = (key: string) => {
@@ -83,6 +87,7 @@ export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMe
   };
   
   const menuItems = getMenuItems(t);
+  const profileSubmenu = getProfileSubmenu(t);
 
   useEffect(() => {
     const checkTheme = () => {
@@ -164,6 +169,46 @@ export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMe
                 <span className="text-sm font-medium">{item.title}</span>
               </NavLink>
             ))}
+            
+            {/* Profile Submenu */}
+            <div className="flex flex-col">
+              <button
+                onClick={() => setProfileExpanded(!profileExpanded)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-md hover:bg-muted text-foreground transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Settings className="h-5 w-5" />
+                  <span className="text-sm font-medium">{t('menu.profile')}</span>
+                </div>
+                {profileExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+              
+              {profileExpanded && (
+                <div className="flex flex-col gap-1 mt-1 ml-4 pl-4 border-l-2 border-muted">
+                  {profileSubmenu.map((item) => (
+                    <NavLink
+                      key={item.title}
+                      to={item.url}
+                      onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted text-foreground"
+                        }`
+                      }
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="text-sm">{item.title}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
           </nav>
 
           <Separator />
