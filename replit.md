@@ -68,11 +68,12 @@ Preferred communication style: Simple, everyday language.
 
 ### Kanban Filters Feature
 - ✅ Implemented comprehensive filtering system for Kanban board
-- ✅ **Type filters**: All transactions, Fiat→Crypto (Crypto Sale), Crypto→Fiat (Crypto Purchase)
-- ✅ **Date filters**: Today, This week, This month, Custom range
-- ✅ Created `KanbanFilters.tsx` component using shadcn Select and Input components
+- ✅ **Type filters**: Three button design - "Todas", "Compras", "Ventas"
+- ✅ **Date filters**: Dropdown with Today, This week, This month, Custom range
+- ✅ Created `KanbanFilters.tsx` component using shadcn Button and Select components
 - ✅ Updated backend storage layer (`server/storage.ts`) with filter support
 - ✅ Modified GET `/api/transactions` route to accept filter query params
 - ✅ Smart refetch logic: waits for both dates when using custom range
+- ✅ Removed separate Liquidator/Requester views - unified view shows all transactions
 - ✅ Maintained existing Kanban column structure (pending, offer_made, escrow_created)
 - ✅ Full i18n support for all filter UI elements
