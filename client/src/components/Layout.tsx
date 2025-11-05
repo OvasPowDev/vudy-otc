@@ -9,10 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { User, Settings, LogOut, Key } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -47,18 +49,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
                   <Settings className="mr-2 h-4 w-4" />
-                  <span>Perfil</span>
+                  <span>{t('menu.profile')}</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/api-settings")}>
+                <DropdownMenuItem onClick={() => navigate("/api-settings")} data-testid="menu-api-settings">
                   <Key className="mr-2 h-4 w-4" />
-                  <span>API Settings</span>
+                  <span>{t('menu.apiSettings')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem onClick={handleLogout} data-testid="menu-sign-out">
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Cerrar sesión</span>
+                  <span>{t('menu.signOut')}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

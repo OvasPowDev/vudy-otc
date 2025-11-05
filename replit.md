@@ -61,6 +61,17 @@ Preferred communication style: Simple, everyday language.
 
 ## November 05, 2025 (PM)
 
+### Menu Internationalization
+- ✅ **Updated Layout Component**:
+  - Added useLanguage hook to Layout component
+  - All menu items now use i18n translations (t('menu.*'))
+  - Menu items properly translated in Spanish and English
+  
+- ✅ **Translation Updates**:
+  - Added `menu.apiSettings` translation: "Configuración de API" (ES) / "API Settings" (EN)
+  - Updated menu items: profile, apiSettings, signOut with proper translations
+  - Added data-testid attributes for better testing: menu-profile, menu-api-settings, menu-sign-out
+
 ### API Keys & External Integration System
 - ✅ **Database Schema Updates**:
   - Added `api_keys` table with fields: userId, name, keyHash, keyPrefix, lastUsedAt, isActive, createdAt, revokedAt
