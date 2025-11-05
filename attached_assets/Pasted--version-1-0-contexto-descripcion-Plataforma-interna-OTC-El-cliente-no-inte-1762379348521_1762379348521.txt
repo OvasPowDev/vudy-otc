@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "contexto": {
+    "descripcion": "Plataforma interna OTC. El cliente no interactúa. Los usuarios del OTC crean ofertas, adjudican, mueven a escrow y liquidan.",
+    "tipos_transaccion": ["FTC", "CTF"],
+    "roles": ["trader", "desk_operator", "compliance", "viewer"]
+  },
+  "schemas": {
+    "transaccion_detalle": {
+      "type": "object",
+      "properties": {
+        "transaccion_id": { "type": "string", "format": "uuid" },
+        "tipo": { "type": "string", "enum": ["FTC", "CTF"] },
+        "estado_global": {
+          "type": "string",
+          "enum": [
+            "pendiente",
+            "con_ofertas",
+            "oferta_adjudicada",
+            "escrow_creado",
+            "en_liquidacion",
+            "completada",
+            "cancelada"
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "fecha_creacion": { "type": "string", "format": "date-time" },
+            "creado_por": { "type": "string" },
+            "sla_minutos": { "type": "integer" },
+            "notas_internas": { "type": "string" }
+          }
+        },
+        "cliente": {
+          "type": "object",
+          "description": "Datos del cliente externo (solo lectura, no usuario de la plataforma).",
+          "properties": {
+            "alias": { "type": "string" },
+            "origen_solicitud": { "type": "string", "enum": ["whatsapp", "api", "form", "manual"] }
+          }
+        },
+        "detalle_FTC": {
+          "type": "object",
+          "description": "Solo si tipo=FTC (Fiat -> Crypto). El cliente entrega FIAT y recibe CRYPTO.",
+          "properties": {
+            "monto_fiat": { "type": "number" },
+            "moneda_fiat": { "type": "string", "enum": ["USD", "GTQ", "MXN", "EUR"] },
+            "cadena_destino": { "type": "string" },
+            "token_destino": { "type": "string" },
+            "wallet_destino_cliente": { "type": "string" },
+            "nota_cliente": { "type": "string" }
+          }
+        },
+        "detalle_CTF": {
+          "type": "object",
+          "description": "Solo si tipo=CTF (Crypto -> Fiat). El cliente entrega CRYPTO y recibe FIAT.",
+          "properties": {
+            "cadena_origen": { "type": "string" },
+            "token_origen": { "type": "string" },
+            "monto_crypto": { "type": "number" },
+            "cuenta_fiat_destino_cliente": {
+              "type": "object",
+              "properties": {
+                "banco": { "type": "string" },
+                "numero_cuenta": { "type": "string" },
+                "titular": { "type": "string" },
+                "moneda": { "type": "string" }
+              }
+            },
+            "nota_cliente": { "type": "string" }
+          }
+        },
+        "ofertas": {
+          "type": "array",
+          "items": { "$ref": "#/schemas/oferta" }
+        },
+        "oferta_adjudicada_id": { "type": "string", "nullable": true }
+      },
+      "required": ["transaccion_id", "tipo", "estado_global", "metadata"]
+    },
+    "oferta": {
+      "type": "object",
+      "properties": {
+        "oferta_id": { "type": "string", "format": "uuid" },
+        "trader_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "monto_cotizado_fiat": { "type": "number" },
+        "tasa_conversion": { "type": "string", "description": "Texto legible, p.ej. '1 USD = 1.002 USDC' o '1 USDT = 0.99 USD'." },
+        "comisiones": {
+          "type": "object",
+          "properties": {
+            "porcentaje": { "type": "number" },
+            "fijo": { "type": "number" },
+            "incluye_fees_red": { "type": "boolean" }
+          }
+        },
+        "liquidez_estimacion_min": { "type": "integer", "description": "Minutos para completar tras adjudicación." },
+        "capacidad_maxima_operar": { "type": "number" },
+        "comentario_trader": { "type": "string" },
+
+        "routing_FTC": {
+          "type": "object",
+          "description": "Solo para transacciones FTC: el cliente deposita FIAT al trader y el trader envía CRYPTO al wallet del cliente.",
+          "properties": {
+            "cuenta_fiat_receptora_trader": {
+              "type": "object",
+              "properties": {
+                "banco": { "type": "string" },
+                "numero_cuenta": { "type": "string" },
+                "titular": { "type": "string" },
+                "moneda": { "type": "string" },
+                "metodo": { "type": "string", "enum": ["transferencia_local", "wire", "ach", "spei", "otros"] }
+              }
+            },
+            "wallet_origen_trader": { "type": "string", "description": "Wallet desde el que el trader enviará el token al cliente." }
+          }
+        },
+
+        "routing_CTF": {
+          "type": "object",
+          "description": "Solo para transacciones CTF: el cliente envía CRYPTO al trader y el trader paga FIAT a la cuenta del cliente.",
+          "properties": {
+            "wallet_destino_trader": { "type": "string", "description": "Wallet donde el trader recibirá el token del cliente." },
+            "cuenta_fiat_origen_trader": {
+              "type": "object",
+              "properties": {
+                "banco": { "type": "string" },
+                "numero_cuenta": { "type": "string" },
+                "titular": { "type": "string" },
+                "moneda": { "type": "string" },
+                "metodo": { "type": "string", "enum": ["transferencia_local", "wire", "ach", "spei", "otros"] }
+              }
+            }
+          }
+        },
+
+        "estado_oferta": {
+          "type": "string",
+          "enum": ["enviada", "retirada", "rechazada", "adjudicada", "expirada"]
+        }
+      },
+      "required": ["oferta_id", "trader_id", "timestamp", "monto_cotizado_fiat", "estado_oferta"]
+    },
+    "permisos_por_rol": {
+      "trader": [
+        "crear_oferta",
+        "editar_oferta_si_no_adjudicada",
+        "retirar_oferta",
+        "ver_transacciones_pendientes",
+        "ver_resultado_oferta"
+      ],
+      "desk_operator": [
+        "ver_todas_transacciones",
+        "filtrar_por_estado",
+        "adjudicar_oferta",
+        "crear_escrow",
+        "marcar_pago_recibido",
+        "marcar_pago_enviado",
+        "liberar_escrow_

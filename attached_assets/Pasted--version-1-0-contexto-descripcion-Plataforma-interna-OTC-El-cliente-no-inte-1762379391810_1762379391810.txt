@@ -1,0 +1,421 @@
+{
+  "version": "1.0",
+  "contexto": {
+    "descripcion": "Plataforma interna OTC. El cliente no interactúa. Los usuarios del OTC crean ofertas, adjudican, mueven a escrow y liquidan.",
+    "tipos_transaccion": ["FTC", "CTF"],
+    "roles": ["trader", "desk_operator", "compliance", "viewer"]
+  },
+  "schemas": {
+    "transaccion_detalle": {
+      "type": "object",
+      "properties": {
+        "transaccion_id": { "type": "string", "format": "uuid" },
+        "tipo": { "type": "string", "enum": ["FTC", "CTF"] },
+        "estado_global": {
+          "type": "string",
+          "enum": [
+            "pendiente",
+            "con_ofertas",
+            "oferta_adjudicada",
+            "escrow_creado",
+            "en_liquidacion",
+            "completada",
+            "cancelada"
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "fecha_creacion": { "type": "string", "format": "date-time" },
+            "creado_por": { "type": "string" },
+            "sla_minutos": { "type": "integer" },
+            "notas_internas": { "type": "string" }
+          }
+        },
+        "cliente": {
+          "type": "object",
+          "description": "Datos del cliente externo (solo lectura, no usuario de la plataforma).",
+          "properties": {
+            "alias": { "type": "string" },
+            "origen_solicitud": { "type": "string", "enum": ["whatsapp", "api", "form", "manual"] }
+          }
+        },
+        "detalle_FTC": {
+          "type": "object",
+          "description": "Solo si tipo=FTC (Fiat -> Crypto). El cliente entrega FIAT y recibe CRYPTO.",
+          "properties": {
+            "monto_fiat": { "type": "number" },
+            "moneda_fiat": { "type": "string", "enum": ["USD", "GTQ", "MXN", "EUR"] },
+            "cadena_destino": { "type": "string" },
+            "token_destino": { "type": "string" },
+            "wallet_destino_cliente": { "type": "string" },
+            "nota_cliente": { "type": "string" }
+          }
+        },
+        "detalle_CTF": {
+          "type": "object",
+          "description": "Solo si tipo=CTF (Crypto -> Fiat). El cliente entrega CRYPTO y recibe FIAT.",
+          "properties": {
+            "cadena_origen": { "type": "string" },
+            "token_origen": { "type": "string" },
+            "monto_crypto": { "type": "number" },
+            "cuenta_fiat_destino_cliente": {
+              "type": "object",
+              "properties": {
+                "banco": { "type": "string" },
+                "numero_cuenta": { "type": "string" },
+                "titular": { "type": "string" },
+                "moneda": { "type": "string" }
+              }
+            },
+            "nota_cliente": { "type": "string" }
+          }
+        },
+        "ofertas": {
+          "type": "array",
+          "items": { "$ref": "#/schemas/oferta" }
+        },
+        "oferta_adjudicada_id": { "type": "string", "nullable": true }
+      },
+      "required": ["transaccion_id", "tipo", "estado_global", "metadata"]
+    },
+    "oferta": {
+      "type": "object",
+      "properties": {
+        "oferta_id": { "type": "string", "format": "uuid" },
+        "trader_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "monto_cotizado_fiat": { "type": "number" },
+        "tasa_conversion": { "type": "string", "description": "Texto legible, p.ej. '1 USD = 1.002 USDC' o '1 USDT = 0.99 USD'." },
+        "comisiones": {
+          "type": "object",
+          "properties": {
+            "porcentaje": { "type": "number" },
+            "fijo": { "type": "number" },
+            "incluye_fees_red": { "type": "boolean" }
+          }
+        },
+        "liquidez_estimacion_min": { "type": "integer", "description": "Minutos para completar tras adjudicación." },
+        "capacidad_maxima_operar": { "type": "number" },
+        "comentario_trader": { "type": "string" },
+
+        "routing_FTC": {
+          "type": "object",
+          "description": "Solo para transacciones FTC: el cliente deposita FIAT al trader y el trader envía CRYPTO al wallet del cliente.",
+          "properties": {
+            "cuenta_fiat_receptora_trader": {
+              "type": "object",
+              "properties": {
+                "banco": { "type": "string" },
+                "numero_cuenta": { "type": "string" },
+                "titular": { "type": "string" },
+                "moneda": { "type": "string" },
+                "metodo": { "type": "string", "enum": ["transferencia_local", "wire", "ach", "spei", "otros"] }
+              }
+            },
+            "wallet_origen_trader": { "type": "string", "description": "Wallet desde el que el trader enviará el token al cliente." }
+          }
+        },
+
+        "routing_CTF": {
+          "type": "object",
+          "description": "Solo para transacciones CTF: el cliente envía CRYPTO al trader y el trader paga FIAT a la cuenta del cliente.",
+          "properties": {
+            "wallet_destino_trader": { "type": "string", "description": "Wallet donde el trader recibirá el token del cliente." },
+            "cuenta_fiat_origen_trader": {
+              "type": "object",
+              "properties": {
+                "banco": { "type": "string" },
+                "numero_cuenta": { "type": "string" },
+                "titular": { "type": "string" },
+                "moneda": { "type": "string" },
+                "metodo": { "type": "string", "enum": ["transferencia_local", "wire", "ach", "spei", "otros"] }
+              }
+            }
+          }
+        },
+
+        "estado_oferta": {
+          "type": "string",
+          "enum": ["enviada", "retirada", "rechazada", "adjudicada", "expirada"]
+        }
+      },
+      "required": ["oferta_id", "trader_id", "timestamp", "monto_cotizado_fiat", "estado_oferta"]
+    },
+    "permisos_por_rol": {
+      "trader": [
+        "crear_oferta",
+        "editar_oferta_si_no_adjudicada",
+        "retirar_oferta",
+        "ver_transacciones_pendientes",
+        "ver_resultado_oferta"
+      ],
+      "desk_operator": [
+        "ver_todas_transacciones",
+        "filtrar_por_estado",
+        "adjudicar_oferta",
+        "crear_escrow",
+        "marcar_pago_recibido",
+        "marcar_pago_enviado",
+        "liberar_escrow",
+        "cancelar_transaccion",
+        "rechazar_ofertas_no_ganadoras"
+      ],
+      "compliance": [
+        "ver_transacciones",
+        "congelar_transaccion",
+        "requerir_kyc_kyb",
+        "aprobar_restricciones"
+      ],
+      "viewer": ["ver_transacciones", "ver_ofertas"]
+    },
+    "maquina_estados": {
+      "pendiente": ["con_ofertas", "cancelada"],
+      "con_ofertas": ["oferta_adjudicada", "cancelada"],
+      "oferta_adjudicada": ["escrow_creado", "cancelada"],
+      "escrow_creado": ["en_liquidacion", "cancelada"],
+      "en_liquidacion": ["completada", "cancelada"],
+      "completada": [],
+      "cancelada": []
+    },
+    "reglas_kanban_por_usuario": {
+      "descripcion": "Proyección por usuario OTC según su interacción.",
+      "reglas": [
+        {
+          "cuando": "transaccion.estado_global = 'pendiente' y usuario NO ha ofertado",
+          "columna": "Pendientes",
+          "visible": true
+        },
+        {
+          "cuando": "usuario ha ofertado y transaccion.estado_global in ['pendiente','con_ofertas']",
+          "columna": "Mi oferta enviada",
+          "visible": true
+        },
+        {
+          "cuando": "oferta del usuario = adjudicada",
+          "columna": "Escrow / Ejecutando",
+          "visible": true,
+          "acciones_sugeridas": ["crear_escrow (desk_operator)", "coordinar_envios"]
+        },
+        {
+          "cuando": "otra oferta fue adjudicada",
+          "columna": "No visible en Kanban",
+          "visible": false,
+          "registro": "historico_perdidas"
+        }
+      ]
+    }
+  },
+  "ui_detalle_transaccion": {
+    "secciones": [
+      {
+        "id": "header",
+        "campos": ["transaccion_id", "tipo", "estado_global", "metadata.fecha_creacion", "metadata.sla_minutos"]
+      },
+      {
+        "id": "resumen_operativo",
+        "condiciones": [
+          {
+            "si_tipo": "FTC",
+            "mostrar": [
+              "detalle_FTC.monto_fiat",
+              "detalle_FTC.moneda_fiat",
+              "detalle_FTC.cadena_destino",
+              "detalle_FTC.token_destino",
+              "detalle_FTC.wallet_destino_cliente"
+            ]
+          },
+          {
+            "si_tipo": "CTF",
+            "mostrar": [
+              "detalle_CTF.cadena_origen",
+              "detalle_CTF.token_origen",
+              "detalle_CTF.monto_crypto",
+              "detalle_CTF.cuenta_fiat_destino_cliente.banco",
+              "detalle_CTF.cuenta_fiat_destino_cliente.numero_cuenta",
+              "detalle_CTF.cuenta_fiat_destino_cliente.moneda"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ofertas",
+        "tabla_campos_comunes": [
+          "oferta_id",
+          "trader_id",
+          "monto_cotizado_fiat",
+          "tasa_conversion",
+          "comisiones",
+          "liquidez_estimacion_min",
+          "capacidad_maxima_operar",
+          "estado_oferta",
+          "timestamp"
+        ],
+        "columnas_routing_FTC": [
+          "routing_FTC.cuenta_fiat_receptora_trader.banco",
+          "routing_FTC.cuenta_fiat_receptora_trader.numero_cuenta",
+          "routing_FTC.cuenta_fiat_receptora_trader.moneda",
+          "routing_FTC.wallet_origen_trader"
+        ],
+        "columnas_routing_CTF": [
+          "routing_CTF.wallet_destino_trader",
+          "routing_CTF.cuenta_fiat_origen_trader.banco",
+          "routing_CTF.cuenta_fiat_origen_trader.numero_cuenta",
+          "routing_CTF.cuenta_fiat_origen_trader.moneda"
+        ],
+        "acciones_desk_operator": [
+          { "id": "adjudicar_oferta", "visibilidad": "si estado in ['pendiente','con_ofertas']" },
+          { "id": "rechazar_oferta", "visibilidad": "si estado in ['pendiente','con_ofertas']" }
+        ],
+        "acciones_trader_propietario": [
+          { "id": "editar_oferta", "visibilidad": "si estado_oferta='enviada' y transaccion.estado_global in ['pendiente','con_ofertas']" },
+          { "id": "retirar_oferta", "visibilidad": "si estado_oferta='enviada'" }
+        ]
+      },
+      {
+        "id": "escrow_y_liquidacion",
+        "mostrar_si": "estado_global in ['oferta_adjudicada','escrow_creado','en_liquidacion']",
+        "campos": [
+          "oferta_adjudicada_id",
+          "escrow.id",
+          "escrow.network",
+          "escrow.monto",
+          "escrow.token",
+          "escrow.estado",
+          "pruebas_pago.crypto_tx_hash",
+          "pruebas_pago.comprobante_bancario_url",
+          "timestamps.escrow_creado",
+          "timestamps.pago_recibido",
+          "timestamps.pago_enviado",
+          "timestamps.liberacion_escrow"
+        ],
+        "acciones_desk_operator": [
+          "crear_escrow",
+          "marcar_pago_recibido",
+          "marcar_pago_enviado",
+          "liberar_escrow",
+          "cancelar_transaccion"
+        ]
+      },
+      {
+        "id": "auditoria_compliance",
+        "campos": [
+          "kyc_kyb.estado",
+          "listas_restrictivas.checksum",
+          "riesgo.score",
+          "comentarios_compliance"
+        ]
+      }
+    ]
+  },
+  "ejemplos": {
+    "FTC": {
+      "transaccion": {
+        "transaccion_id": "8c3e3b5e-88c0-4d9a-9d5a-90d8f4a1f9a1",
+        "tipo": "FTC",
+        "estado_global": "con_ofertas",
+        "metadata": {
+          "fecha_creacion": "2025-11-05T15:10:00Z",
+          "creado_por": "ops_agent_01",
+          "sla_minutos": 60,
+          "notas_internas": "Cliente pide rapidez."
+        },
+        "cliente": { "alias": "Cliente-FT-12", "origen_solicitud": "whatsapp" },
+        "detalle_FTC": {
+          "monto_fiat": 1000,
+          "moneda_fiat": "USD",
+          "cadena_destino": "Algorand",
+          "token_destino": "USDC",
+          "wallet_destino_cliente": "ALGO-XXXX-YYYY-ZZZZ",
+          "nota_cliente": "Depósito en 1h si es posible."
+        },
+        "ofertas": [
+          {
+            "oferta_id": "a1",
+            "trader_id": "traderX",
+            "timestamp": "2025-11-05T15:20:00Z",
+            "monto_cotizado_fiat": 998.5,
+            "tasa_conversion": "1 USD = 1.002 USDC",
+            "comisiones": { "porcentaje": 0.5, "fijo": 1.0, "incluye_fees_red": true },
+            "liquidez_estimacion_min": 20,
+            "capacidad_maxima_operar": 25000,
+            "comentario_trader": "Incluye fees de red.",
+            "routing_FTC": {
+              "cuenta_fiat_receptora_trader": {
+                "banco": "Banco Industrial",
+                "numero_cuenta": "123456789",
+                "titular": "Trader X LLC",
+                "moneda": "USD",
+                "metodo": "transferencia_local"
+              },
+              "wallet_origen_trader": "ALGO-AAAA-BBBB-CCCC"
+            },
+            "estado_oferta": "enviada"
+          }
+        ],
+        "oferta_adjudicada_id": null
+      }
+    },
+    "CTF": {
+      "transaccion": {
+        "transaccion_id": "5b7d1f0c-12e4-4a0a-bc83-1d3d9c77af02",
+        "tipo": "CTF",
+        "estado_global": "oferta_adjudicada",
+        "metadata": {
+          "fecha_creacion": "2025-11-05T14:40:00Z",
+          "creado_por": "ops_agent_02",
+          "sla_minutos": 90,
+          "notas_internas": "Cliente acepta pago BAC."
+        },
+        "cliente": { "alias": "Cliente-CT-77", "origen_solicitud": "api" },
+        "detalle_CTF": {
+          "cadena_origen": "Ethereum",
+          "token_origen": "USDT",
+          "monto_crypto": 500,
+          "cuenta_fiat_destino_cliente": {
+            "banco": "BAC Guatemala",
+            "numero_cuenta": "458963217",
+            "titular": "Jane Doe",
+            "moneda": "USD"
+          },
+          "nota_cliente": "Depositar mismo día."
+        },
+        "ofertas": [
+          {
+            "oferta_id": "b9",
+            "trader_id": "traderY",
+            "timestamp": "2025-11-05T14:55:00Z",
+            "monto_cotizado_fiat": 495,
+            "tasa_conversion": "1 USDT = 0.99 USD",
+            "comisiones": { "porcentaje": 1.0, "fijo": 0, "incluye_fees_red": true },
+            "liquidez_estimacion_min": 30,
+            "capacidad_maxima_operar": 100000,
+            "comentario_trader": "Liquido BAC inmediato.",
+            "routing_CTF": {
+              "wallet_destino_trader": "ETH-AAAA-BBBB-CCCC",
+              "cuenta_fiat_origen_trader": {
+                "banco": "Banrural",
+                "numero_cuenta": "789654123",
+                "titular": "Trader Y SA",
+                "moneda": "USD",
+                "metodo": "transferencia_local"
+              }
+            },
+            "estado_oferta": "adjudicada"
+          }
+        ],
+        "oferta_adjudicada_id": "b9"
+      }
+    }
+  },
+  "validaciones_clave": [
+    "Si tipo=FTC, exigir routing_FTC en las ofertas y ocultar routing_CTF.",
+    "Si tipo=CTF, exigir routing_CTF en las ofertas y ocultar routing_FTC.",
+    "No permitir editar ni retirar una oferta cuando estado_oferta='adjudicada' o transaccion.estado_global != ['pendiente','con_ofertas'].",
+    "Al adjudicar una oferta: marcar esa oferta como 'adjudicada', mover estado_global->'oferta_adjudicada', set oferta_adjudicada_id, y marcar resto como 'rechazada'.",
+    "Al crear escrow: estado_global->'escrow_creado'.",
+    "Con pruebas de envío/recepción: estado_global->'en_liquidacion'.",
+    "Al liberar escrow: estado_global->'completada'.",
+    "Si se adjudica una oferta: en Kanban ocultar para demás traders (registrar en 'historico_perdidas')."
+  ]
+}
