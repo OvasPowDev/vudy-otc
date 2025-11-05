@@ -2,7 +2,7 @@ import { pgTable, uuid, text, timestamp, boolean, jsonb, numeric, integer, pgEnu
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const transactionTypeEnum = pgEnum("transaction_type", ["Buy", "Sell"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["buy", "sell"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "offer_made", "escrow_created", "completed"]);
 
 export const profiles = pgTable("profiles", {
