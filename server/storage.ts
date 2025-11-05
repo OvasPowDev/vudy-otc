@@ -8,7 +8,7 @@ import {
   type Wallet, type InsertWallet,
   type OtcOffer, type InsertOtcOffer
 } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Profiles
@@ -30,7 +30,13 @@ export interface IStorage {
   markAllNotificationsAsRead(userId: string): Promise<void>;
 
   // Transactions
-  getTransactions(userId?: string): Promise<Transaction[]>;
+  getTransactions(filters?: {
+    userId?: string;
+    type?: "all" | "fiat_to_crypto" | "crypto_to_fiat";
+    datePreset?: "today" | "this_week" | "this_month" | "range";
+    from?: string;
+    to?: string;
+  }): Promise<Transaction[]>;
   getTransaction(id: string): Promise<Transaction | undefined>;
   createTransaction(data: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, data: Partial<InsertTransaction>): Promise<Transaction | undefined>;
@@ -101,11 +107,74 @@ export class DbStorage implements IStorage {
     await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
   }
 
-  async getTransactions(userId?: string): Promise<Transaction[]> {
-    if (userId) {
-      return await db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt));
+  async getTransactions(filters?: {
+    userId?: string;
+    type?: "all" | "fiat_to_crypto" | "crypto_to_fiat";
+    datePreset?: "today" | "this_week" | "this_month" | "range";
+    from?: string;
+    to?: string;
+  }): Promise<Transaction[]> {
+    const conditions: any[] = [];
+
+    // Filter by userId if provided
+    if (filters?.userId) {
+      conditions.push(eq(transactions.userId, filters.userId));
     }
-    // Return all transactions if no userId specified (for liquidators to view all)
+
+    // Filter by type if not 'all'
+    if (filters?.type && filters.type !== "all") {
+      // Map type values to match schema: fiat_to_crypto -> sell, crypto_to_fiat -> buy
+      const typeValue = filters.type === "fiat_to_crypto" ? "sell" : "buy";
+      conditions.push(eq(transactions.type, typeValue));
+    }
+
+    // Filter by date
+    if (filters?.datePreset) {
+      const now = new Date();
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      switch (filters.datePreset) {
+        case "today":
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case "this_week":
+          const dayOfWeek = now.getDay();
+          const diff = now.getDate() - dayOfWeek;
+          startDate = new Date(now.getFullYear(), now.getMonth(), diff);
+          break;
+        case "this_month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case "range":
+          if (filters.from) {
+            startDate = new Date(filters.from);
+          }
+          if (filters.to) {
+            endDate = new Date(filters.to);
+            endDate.setHours(23, 59, 59, 999); // End of day
+          }
+          break;
+      }
+
+      if (startDate) {
+        conditions.push(gte(transactions.createdAt, startDate));
+      }
+      if (endDate) {
+        conditions.push(lte(transactions.createdAt, endDate));
+      }
+    }
+
+    // Build and execute query
+    if (conditions.length > 0) {
+      return await db
+        .select()
+        .from(transactions)
+        .where(and(...conditions))
+        .orderBy(desc(transactions.createdAt));
+    }
+
+    // Return all transactions if no filters specified
     return await db.select().from(transactions).orderBy(desc(transactions.createdAt));
   }
 

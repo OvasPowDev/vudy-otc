@@ -259,8 +259,15 @@ export function registerRoutes(app: Express) {
 
   // Transactions
   app.get("/api/transactions", async (req: Request, res: Response) => {
-    const userId = req.query.userId as string | undefined;
-    const transactions = await storage.getTransactions(userId);
+    const filters = {
+      userId: req.query.userId as string | undefined,
+      type: req.query.type as "all" | "fiat_to_crypto" | "crypto_to_fiat" | undefined,
+      datePreset: req.query.datePreset as "today" | "this_week" | "this_month" | "range" | undefined,
+      from: req.query.from as string | undefined,
+      to: req.query.to as string | undefined,
+    };
+    
+    const transactions = await storage.getTransactions(filters);
     return res.json(transactions);
   });
 
