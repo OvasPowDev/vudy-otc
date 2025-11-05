@@ -24,12 +24,6 @@ type Props = {
 export function KanbanFilters({ value, onChange }: Props) {
   const { t } = useLanguage();
 
-  const TYPES = [
-    { value: "all", label: t("filters.all") },
-    { value: "fiat_to_crypto", label: t("filters.fiatToCrypto") },
-    { value: "crypto_to_fiat", label: t("filters.cryptoToFiat") },
-  ];
-
   const DATES = [
     { value: "today", label: t("filters.today") },
     { value: "this_week", label: t("filters.thisWeek") },
@@ -46,37 +40,40 @@ export function KanbanFilters({ value, onChange }: Props) {
     onChange(next);
   }
 
-  function reset() {
-    onChange({
-      type: "all",
-      datePreset: "today",
-      from: null,
-      to: null,
-    });
-  }
-
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Select
-        value={value.type}
-        onValueChange={(v) => upd("type", v as any)}
-      >
-        <SelectTrigger
-          className="w-[280px]"
-          aria-label={t("filters.tradeType")}
-          data-testid="select-trade-type"
+    <div className="flex flex-wrap items-center gap-3">
+      {/* Type Filter Buttons */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          onClick={() => upd("type", "all")}
+          variant={value.type === "all" ? "default" : "outline"}
+          size="default"
+          data-testid="button-filter-all"
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {TYPES.map((o) => (
-            <SelectItem key={o.value} value={o.value} data-testid={`option-type-${o.value}`}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          {t("filters.all")}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => upd("type", "crypto_to_fiat")}
+          variant={value.type === "crypto_to_fiat" ? "default" : "outline"}
+          size="default"
+          data-testid="button-filter-purchases"
+        >
+          {t("filters.purchases")}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => upd("type", "fiat_to_crypto")}
+          variant={value.type === "fiat_to_crypto" ? "default" : "outline"}
+          size="default"
+          data-testid="button-filter-sales"
+        >
+          {t("filters.sales")}
+        </Button>
+      </div>
 
+      {/* Date Filter Dropdown */}
       <Select
         value={value.datePreset}
         onValueChange={(v) => upd("datePreset", v as any)}
@@ -97,6 +94,7 @@ export function KanbanFilters({ value, onChange }: Props) {
         </SelectContent>
       </Select>
 
+      {/* Custom Date Range Inputs */}
       {value.datePreset === "range" && (
         <>
           <Input
@@ -117,16 +115,6 @@ export function KanbanFilters({ value, onChange }: Props) {
           />
         </>
       )}
-
-      <Button
-        type="button"
-        onClick={reset}
-        variant="outline"
-        size="default"
-        data-testid="button-reset-filters"
-      >
-        {t("filters.reset")}
-      </Button>
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, Clock, FileText, Shield } from "lucide-react";
 import { TransactionDetailModal } from "./TransactionDetailModal";
 import { MakeOfferDialog } from "./MakeOfferDialog";
@@ -201,7 +200,6 @@ function Column({ column, requests, onOfferCreated }: { column: any; requests: O
 export function KanbanBoard() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [activeView, setActiveView] = useState<"liquidator" | "requester">("liquidator");
   const [filters, setFilters] = useState<FilterValue>({
     type: "all",
     datePreset: "today",
@@ -240,21 +238,21 @@ export function KanbanBoard() {
     // Count offers for this transaction
     const transactionOffers = allOffers.filter((o: any) => o.transactionId === transaction.id);
     
-    // Determine myColumn based on user's role and transaction state
+    // Determine myColumn based on transaction state
     let myColumn: "pending" | "offer_made" | "escrow_created" | undefined;
     
-    if (activeView === "liquidator") {
-      // For liquidators: pending if no offer made, offer_made if they have an offer
-      const myOffer = transactionOffers.find((o: any) => o.userId === user?.id);
+    // Check if user has made an offer for this transaction
+    const myOffer = transactionOffers.find((o: any) => o.userId === user?.id);
+    
+    if (transaction.userId === user?.id) {
+      // User's own transactions - show based on transaction status
+      myColumn = transaction.status;
+    } else {
+      // Other users' transactions - show as liquidator view
       if (myOffer) {
         myColumn = "offer_made";
       } else if (transaction.status === "pending") {
         myColumn = "pending";
-      }
-    } else {
-      // For requesters: show their own transactions
-      if (transaction.userId === user?.id) {
-        myColumn = transaction.status;
       }
     }
 
@@ -278,10 +276,8 @@ export function KanbanBoard() {
 
   const allRequests = transactions.map(formatTransactionFromDB);
 
-  // Filter requests based on view
-  const filteredRequests = activeView === "liquidator"
-    ? allRequests.filter(r => r.userId !== user?.id && r.myColumn) // Liquidator sees other users' transactions
-    : allRequests.filter(r => r.userId === user?.id); // Requester sees their own
+  // Show all transactions that have a column assignment
+  const filteredRequests = allRequests.filter(r => r.myColumn);
 
   // Group by column
   const groupedRequests = {
@@ -304,33 +300,20 @@ export function KanbanBoard() {
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="liquidator" data-testid="tab-liquidator">
-            {t('dashboard.liquidatorView')}
-          </TabsTrigger>
-          <TabsTrigger value="requester" data-testid="tab-requester">
-            {t('dashboard.requesterView')}
-          </TabsTrigger>
-        </TabsList>
+      {/* Filters */}
+      <KanbanFilters value={filters} onChange={setFilters} />
 
-        <TabsContent value={activeView} className="mt-6 space-y-4">
-          {/* Filters */}
-          <KanbanFilters value={filters} onChange={setFilters} />
-
-          {/* Kanban Columns */}
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {columns.map(column => (
-              <Column
-                key={column.id}
-                column={column}
-                requests={groupedRequests[column.id as keyof typeof groupedRequests] || []}
-                onOfferCreated={handleOfferCreated}
-              />
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+      {/* Kanban Columns */}
+      <div className="flex gap-4 overflow-x-auto pb-4">
+        {columns.map(column => (
+          <Column
+            key={column.id}
+            column={column}
+            requests={groupedRequests[column.id as keyof typeof groupedRequests] || []}
+            onOfferCreated={handleOfferCreated}
+          />
+        ))}
+      </div>
     </div>
   );
 }
