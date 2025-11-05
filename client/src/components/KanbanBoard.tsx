@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, Clock, FileText, Shield } from "lucide-react";
 import { TransactionDetailModal } from "./TransactionDetailModal";
 import { MakeOfferDialog } from "./MakeOfferDialog";
+import { KanbanFilters, type FilterValue } from "./KanbanFilters";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -201,12 +202,31 @@ export function KanbanBoard() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [activeView, setActiveView] = useState<"liquidator" | "requester">("liquidator");
+  const [filters, setFilters] = useState<FilterValue>({
+    type: "all",
+    datePreset: "today",
+    from: null,
+    to: null,
+  });
   const columns = getColumns(t);
 
-  // Fetch transactions
+  // Build query params from filters
+  const buildQueryKey = () => {
+    const params = new URLSearchParams();
+    if (filters.type) params.set('type', filters.type);
+    if (filters.datePreset) params.set('datePreset', filters.datePreset);
+    if (filters.datePreset === 'range') {
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
+    }
+    const queryString = params.toString();
+    return queryString ? `/api/transactions?${queryString}` : '/api/transactions';
+  };
+
+  // Fetch transactions with filters
   const { data: transactions = [], refetch } = useQuery<any[]>({
-    queryKey: ['/api/transactions'],
-    enabled: !!user,
+    queryKey: [buildQueryKey()],
+    enabled: !!user && (filters.datePreset !== 'range' || !!(filters.from && filters.to)),
   });
 
   // Fetch offers for transactions
@@ -274,6 +294,14 @@ export function KanbanBoard() {
     refetch();
   };
 
+  // Refetch when filters change
+  useEffect(() => {
+    if (filters.datePreset === 'range' && !(filters.from && filters.to)) {
+      return; // Don't refetch until both dates are set
+    }
+    refetch();
+  }, [filters, refetch]);
+
   return (
     <div className="space-y-4">
       <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)}>
@@ -286,7 +314,11 @@ export function KanbanBoard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeView} className="mt-6">
+        <TabsContent value={activeView} className="mt-6 space-y-4">
+          {/* Filters */}
+          <KanbanFilters value={filters} onChange={setFilters} />
+
+          {/* Kanban Columns */}
           <div className="flex gap-4 overflow-x-auto pb-4">
             {columns.map(column => (
               <Column
