@@ -71,7 +71,7 @@ const BankAccounts = () => {
 
   const form = useForm({
     resolver: zodResolver(formSchema),
-    mode: "onTouched",
+    mode: "onChange",
     defaultValues: {
       country: "",
       bankName: "",
@@ -84,7 +84,7 @@ const BankAccounts = () => {
 
   // Fetch bank accounts
   const { data: accounts = [], isLoading } = useQuery<BankAccount[]>({
-    queryKey: ['/api/bank-accounts', { userId: user?.id }],
+    queryKey: [`/api/bank-accounts?userId=${user?.id}`],
     enabled: !!user,
   });
 
@@ -113,7 +113,7 @@ const BankAccounts = () => {
       });
       setDialogOpen(false);
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ['/api/bank-accounts'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-accounts?userId=${user?.id}`] });
     },
     onError: (error: any) => {
       toast({
@@ -134,7 +134,7 @@ const BankAccounts = () => {
         title: t('bankAccounts.success'),
         description: t('bankAccounts.accountDeleted'),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/bank-accounts'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-accounts?userId=${user?.id}`] });
     },
     onError: (error: any) => {
       toast({

@@ -61,7 +61,7 @@ const Wallets = () => {
 
   // Fetch wallets
   const { data: wallets = [], isLoading } = useQuery<Wallet[]>({
-    queryKey: ['/api/wallets', { userId: user?.id }],
+    queryKey: [`/api/wallets?userId=${user?.id}`],
     enabled: !!user,
   });
 
@@ -86,7 +86,7 @@ const Wallets = () => {
       });
       setDialogOpen(false);
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ['/api/wallets'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/wallets?userId=${user?.id}`] });
     },
     onError: (error: any) => {
       toast({
@@ -107,7 +107,7 @@ const Wallets = () => {
         title: t('bankAccounts.success'),
         description: t('wallets.walletDeleted'),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/wallets'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/wallets?userId=${user?.id}`] });
     },
     onError: (error: any) => {
       toast({
