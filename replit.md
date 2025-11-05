@@ -27,6 +27,16 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 - ✅ Verified all translations remain correct in Spanish and English
 - ✅ Confirmed "Crear transacción" button works correctly on both pages
 
+### Auth UI Redesign - Fuse Style (Nov 05, 2025)
+- ✅ Updated Auth.tsx with modern "Fuse" split-screen design
+- ✅ Left panel: Clean card with rounded corners (rounded-2xl), shadow, and form
+- ✅ Right panel: Teal gradient background with welcome message and online operators
+- ✅ Improved typography, spacing, and visual hierarchy
+- ✅ Added dev login button for easier testing (🔧 Dev: Login as Jose)
+- ✅ Maintained all OTP authentication flow functionality
+- ✅ Responsive design: right panel hidden on mobile, full card on desktop
+- ✅ Dark/light theme support preserved
+
 ### Infrastructure & Backend
 - ✅ Converted Supabase schema to Drizzle ORM schema
 - ✅ Migrated Supabase Edge Functions to Express API routes  
