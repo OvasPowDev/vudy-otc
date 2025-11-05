@@ -177,13 +177,13 @@ export function MakeOfferDialog({ open, onOpenChange, request, onOfferCreated }:
         data: {
           transactionId: txId,
           userId: user?.id,
-          amountValue: parseFloat(data.offerAmount),
+          amountValue: String(parseFloat(data.offerAmount)),
           amountCurrency: currency.code,
           bankAccountId: data.selectedBank || null,
           walletId: data.selectedWallet || null,
           etaMinutes: parseInt(data.etaMinutes),
           notes: data.notes || null,
-          status: 'pending',
+          status: 'open',
         },
       });
     },
