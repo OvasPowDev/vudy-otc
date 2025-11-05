@@ -1,0 +1,130 @@
+{
+"feature_id": "auth.login.view.fuse-like",
+"goal": "Clonar estética 'Fuse' para /login con el menor toque de archivos y sin romper otros flujos.",
+"files_touched_max": 3,
+"route": { "path": "/login", "guard": "publicOnly", "redirectIfAuthed": "/dashboard" },
+"env_flags": { "LOGIN_NEW": "true" },
+"ui_spec_min": {
+"container": "min-h-screen grid md:grid-cols-2 bg-slate-950/5",
+"left": "hidden md:flex items-center justify-center bg-indigo-600/5",
+"right": "flex items-center justify-center p-6",
+"card": "w-full max-w-sm rounded-2xl shadow-lg p-6 bg-white"
+},
+"changes": [
+{ "path": "src/pages/Login.tsx", "action": "create_or_replace" },
+{ "path": "src/routes.tsx", "action": "patch_add_route" },
+{ "path": "src/styles/auth.css", "action": "create_if_no_tailwind" }
+],
+"code": {
+"src/pages/Login.tsx": [
+"import { useState } from 'react';",
+"import { useNavigate } from 'react-router-dom';",
+"",
+"export default function Login(){",
+" const nav = useNavigate();",
+" const [loading,setLoading]=useState(false);",
+" const [err,setErr]=useState('');",
+"",
+" async function onSubmit(e:any){",
+" e.preventDefault(); setErr(''); setLoading(true);",
+" try{",
+" const form = e.currentTarget;",
+" const ok = await (window as any).api?.auth?.login?.({",
+" email: form.email.value,",
+" password: form.password.value,",
+" remember: form.remember.checked",
+" });",
+" if(!ok){ setErr('Credenciales inválidas.'); setLoading(false); return; }",
+" nav('/dashboard');",
+" }catch(_){ setErr('Error al iniciar sesión.'); }",
+" finally{ setLoading(false); }",
+" }",
+"",
+" return (",
+" <div className="min-h-screen grid md:grid-cols-2 bg-slate-950/5">",
+" <aside className="hidden md:flex items-center justify-center bg-indigo-600/5">",
+" <img src="/assets/login-side.webp" alt="" className="max-h-[65vh]" />",
+" </aside>",
+" <main className="flex items-center justify-center p-6">",
+" <form onSubmit={onSubmit} className="w-full max-w-sm rounded-2xl shadow-lg p-6 bg-white">",
+" <img src="/assets/logo.svg" className="h-8 mb-4 opacity-90" alt="logo"/>",
+" <h1 className="text-2xl font-semibold mb-1">Inicia sesión</h1>",
+" <p className="text-sm text-slate-500 mb-6">Bienvenido de vuelta</p>",
+"",
+" <label className="block text-sm mb-1" htmlFor="email">Correo</label>",
+" <input id="email" name="email" type="email" autoComplete="email" required",
+" className="w-full h-10 px-3 rounded-xl border mb-3" placeholder="tu@correo.com"/>",
+"",
+" <label className="block text-sm mb-1" htmlFor="password">Contraseña</label>",
+" <input id="password" name="password" type="password" autoComplete="current-password" required",
+" className="w-full h-10 px-3 rounded-xl border mb-3" placeholder="••••••••"/>",
+"",
+" <div className="flex items-center justify-between mb-4">",
+" <label className="flex items-center gap-2 text-sm">",
+" <input name="remember" type="checkbox"/> Recordarme",
+" </label>",
+" <a href="/forgot" className="text-sm text-indigo-600">¿Olvidaste tu contraseña?</a>",
+" </div>",
+"",
+" {err && <div role="alert" aria-live="polite" className="text-red-600 text-sm mb-3">{err}</div>}",
+"",
+" <button disabled={loading} className="w-full inline-flex h-10 px-4 rounded-xl bg-indigo-600 text-white font-medium">",
+" {loading ? 'Ingresando…' : 'Ingresar'}",
+" </button>",
+"",
+" <div className="my-4 text-center text-sm text-slate-500">o continúa con</div>",
+" <button type="button"",
+" onClick={()=> (window as any).api?.auth?.oauth?.('google')} ",
+" className="w-full inline-flex h-10 px-4 rounded-xl border font-medium">Google</button>",
+" </form>",
+" </main>",
+" </div>",
+" );",
+"}"
+],
+"src/routes.tsx::patch_add_route": [
+"// 1) Importar la página",
+"import Login from './pages/Login';",
+"",
+"// 2) Agregar ruta pública (ejemplo con react-router v6)",
+"// En tu arreglo de rutas o JSX de <Routes>, añade:",
+"// <Route path="/login" element={<Login/>} />",
+"",
+"// 3) (Opcional) Redirigir si está autenticado (pseudoguard):",
+"// const PublicOnly = ({children}:{children:JSX.Element}) => token ? <Navigate to="/dashboard"/> : children;"
+],
+"src/styles/auth.css": [
+":root{--bg:#0f172a0d;--surface:#fff;--muted:#64748b;--accent:#4f46e5;--radius:16px;--shadow:0 10px 24px rgba(2,6,23,.08)}",
+"body{background:var(--bg)}",
+".auth-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow)}",
+"input,button{border-radius:12px;height:40px}"
+]
+},
+"assets": {
+"logo": "/assets/logo.svg (SVG liviano recomendado)",
+"illustration": "/assets/login-side.webp (≤120KB)"
+},
+"safe_defaults": {
+"timeouts_ms": { "read": 10000, "write": 10000, "idle": 60000 },
+"limits": { "body_mb": 5, "conns": 50 },
+"cookies": "HttpOnly; Secure; SameSite=Lax (si usas sesión)"
+},
+"tests_smoke": [
+"Render /login → encuentra 'Inicia sesión'",
+"Submit vacío → validación HTML5 bloquea",
+"Credenciales inválidas → mensaje 'Credenciales inválidas.' sin saltos de layout",
+"Viewport 360px → oculta panel izquierdo; 1280px → muestra ilustración"
+],
+"perf": {
+"bundle_target_login_tsx_kb": "<=12",
+"no_heavy_libs": true,
+"images_webp": true,
+"inline_logo_svg": true
+},
+"apply_steps": [
+"Crear src/pages/Login.tsx con el contenido anterior.",
+"Añadir la ruta en src/routes.tsx según patch.",
+"Si no usas Tailwind, crea src/styles/auth.css y enlázalo en tu entry (main.tsx).",
+"Subir /assets/logo.svg y /assets/login-side.webp."
+]
+}
