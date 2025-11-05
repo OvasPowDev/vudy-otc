@@ -191,8 +191,8 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             {bankAccount && (
                               <div className="col-span-2">
-                                <p className="text-xs text-muted-foreground">Banco</p>
-                                <p className="font-medium">{bankAccount.bankName} - {bankAccount.accountNumber}</p>
+                                <p className="text-xs text-muted-foreground">Cuenta desde donde se enviará</p>
+                                <p className="font-medium">{bankAccount.bankName} - {bankAccount.accountNumber} ({bankAccount.currency})</p>
                               </div>
                             )}
                             <div>
