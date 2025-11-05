@@ -56,3 +56,23 @@ Preferred communication style: Simple, everyday language.
 **Form Management**: React Hook Form, Zod, @hookform/resolvers.
 
 **Drag & Drop**: @dnd-kit (for kanban board).
+
+# Recent Changes
+
+## November 05, 2025
+
+### Dashboard Translation Fixes
+- ✅ Fixed missing translations for dashboard statistics cards (totalTransactions, buyOrders, sellOrders, totalProcessed)
+- ✅ Fixed KanbanBoard view toggle buttons (liquidatorView, requesterView) translations
+- ✅ All dashboard elements now properly internationalized in Spanish and English
+
+### Kanban Filters Feature
+- ✅ Implemented comprehensive filtering system for Kanban board
+- ✅ **Type filters**: All transactions, Fiat→Crypto (Crypto Sale), Crypto→Fiat (Crypto Purchase)
+- ✅ **Date filters**: Today, This week, This month, Custom range
+- ✅ Created `KanbanFilters.tsx` component using shadcn Select and Input components
+- ✅ Updated backend storage layer (`server/storage.ts`) with filter support
+- ✅ Modified GET `/api/transactions` route to accept filter query params
+- ✅ Smart refetch logic: waits for both dates when using custom range
+- ✅ Maintained existing Kanban column structure (pending, offer_made, escrow_created)
+- ✅ Full i18n support for all filter UI elements
