@@ -88,7 +88,14 @@ export const translations = {
       apply: "Aplicar",
       emptyState: "No hay transacciones en el rango seleccionado.",
       invalidRange: "El rango seleccionado no es válido.",
-      applied: "Filtro aplicado."
+      applied: "Filtro aplicado.",
+      all: "Todas",
+      fiatToCrypto: "Fiat → Crypto (Venta de Crypto)",
+      cryptoToFiat: "Crypto → Fiat (Compra de Crypto)",
+      thisWeek: "Esta semana",
+      range: "Rango",
+      reset: "Reset",
+      tradeType: "Tipo de operación"
     },
     makeOffer: {
       title: "Crear Oferta OTC",
@@ -344,7 +351,14 @@ export const translations = {
       apply: "Apply",
       emptyState: "No transactions in the selected range.",
       invalidRange: "The selected range is invalid.",
-      applied: "Filter applied."
+      applied: "Filter applied.",
+      all: "All",
+      fiatToCrypto: "Fiat → Crypto (Crypto Sale)",
+      cryptoToFiat: "Crypto → Fiat (Crypto Purchase)",
+      thisWeek: "This week",
+      range: "Range",
+      reset: "Reset",
+      tradeType: "Trade type"
     },
     makeOffer: {
       title: "Create OTC Offer",
