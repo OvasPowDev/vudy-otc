@@ -67,23 +67,6 @@ export function MakeOfferDialog({ open, onOpenChange, request, onOfferCreated }:
   const isFTC = request.type === "BUY";
   const transactionCode = isFTC ? "FTC" : "CTF";
 
-  // Extract currency from token
-  const getCurrency = () => {
-    const tokenParts = request.token.split('/');
-    if (tokenParts.length === 2) {
-      const currency = tokenParts[1];
-      const currencySymbols: { [key: string]: string } = {
-        'GTQ': 'Q',
-        'USD': '$',
-        'MXN': '$',
-      };
-      return { code: currency, symbol: currencySymbols[currency] || currency };
-    }
-    return { code: 'GTQ', symbol: 'Q' };
-  };
-
-  const currency = getCurrency();
-
   // Calculate fee (0.50%)
   const amount = parseFloat(request.amount) || 0;
   const fee = amount * 0.005;
@@ -117,6 +100,41 @@ export function MakeOfferDialog({ open, onOpenChange, request, onOfferCreated }:
       notes: "",
     },
   });
+
+  // Extract currency from token or selected bank account
+  const getCurrency = () => {
+    // For FTC, use selected bank account currency if available
+    if (isFTC) {
+      const selectedBankId = form.watch("selectedBank");
+      const selectedAccount = bankAccounts.find(acc => acc.id === selectedBankId);
+      if (selectedAccount) {
+        const currencySymbols: { [key: string]: string } = {
+          'GTQ': 'Q',
+          'USD': '$',
+          'MXN': '$',
+          'VES': 'Bs',
+          'COP': '$',
+          'ARS': '$',
+        };
+        return { code: selectedAccount.currency, symbol: currencySymbols[selectedAccount.currency] || selectedAccount.currency };
+      }
+    }
+    
+    // Default: extract from token
+    const tokenParts = request.token.split('/');
+    if (tokenParts.length === 2) {
+      const currency = tokenParts[1];
+      const currencySymbols: { [key: string]: string } = {
+        'GTQ': 'Q',
+        'USD': '$',
+        'MXN': '$',
+      };
+      return { code: currency, symbol: currencySymbols[currency] || currency };
+    }
+    return { code: 'GTQ', symbol: 'Q' };
+  };
+
+  const currency = getCurrency();
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -255,6 +273,43 @@ export function MakeOfferDialog({ open, onOpenChange, request, onOfferCreated }:
           {/* Offer form */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="form-make-offer">
+              {/* For FTC: Show bank account first */}
+              {isFTC && (
+                <FormField
+                  control={form.control}
+                  name="selectedBank"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">
+                        {t('makeOffer.bankAccount')} <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-9" data-testid="select-bank">
+                            <SelectValue placeholder={t('makeOffer.selectBank')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {bankAccounts.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground">
+                              No hay cuentas bancarias. Agrega una desde tu perfil.
+                            </div>
+                          ) : (
+                            bankAccounts.map(account => (
+                              <SelectItem key={account.id} value={account.id} className="text-sm">
+                                {account.bankName} - {account.accountNumber} ({account.currency})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Amount and ETA fields */}
               <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
@@ -306,40 +361,8 @@ export function MakeOfferDialog({ open, onOpenChange, request, onOfferCreated }:
                 />
               </div>
 
-              {isFTC ? (
-                <FormField
-                  control={form.control}
-                  name="selectedBank"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        {t('makeOffer.bankAccount')} <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-9" data-testid="select-bank">
-                            <SelectValue placeholder={t('makeOffer.selectBank')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {bankAccounts.length === 0 ? (
-                            <div className="p-2 text-sm text-muted-foreground">
-                              No hay cuentas bancarias. Agrega una desde tu perfil.
-                            </div>
-                          ) : (
-                            bankAccounts.map(account => (
-                              <SelectItem key={account.id} value={account.id} className="text-sm">
-                                {account.bankName} - {account.accountNumber} ({account.currency})
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )}
-                />
-              ) : (
+              {/* For CTF: Show wallet selection */}
+              {!isFTC && (
                 <FormField
                   control={form.control}
                   name="selectedWallet"

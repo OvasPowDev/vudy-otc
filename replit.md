@@ -75,6 +75,9 @@ Preferred communication style: Simple, everyday language.
 - ✅ Changed notes placeholder to "Ingresa una descripción" (ES) / "Enter a description" (EN)
 - ✅ Added `submit` translation for offer form button
 - ✅ Wallets dropdown now correctly shows user's wallets from their profile
+- ✅ **FTC Form Reorganization**: Bank account selection moved to top of form (above amount and ETA)
+- ✅ **Dynamic Currency**: Currency symbol automatically updates based on selected bank account for FTC transactions
+- ✅ **Supported Currencies**: GTQ (Q), USD ($), MXN ($), VES (Bs), COP ($), ARS ($)
 
 ### Dashboard Translation Fixes
 - ✅ Fixed missing translations for dashboard statistics cards (totalTransactions, buyOrders, sellOrders, totalProcessed)
