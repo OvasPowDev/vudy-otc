@@ -16,9 +16,9 @@ import { authManager } from "@/lib/auth";
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Transactions", url: "/transactions", icon: FileText },
+  { title: "Profile", url: "/profile", icon: Settings },
   { title: "Bank Accounts", url: "/bank-accounts", icon: CreditCard },
   { title: "Wallets", url: "/wallets", icon: Wallet },
-  { title: "Profile", url: "/profile", icon: Settings },
 ];
 
 export function AppSidebar() {

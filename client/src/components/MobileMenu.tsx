@@ -25,9 +25,9 @@ interface MobileMenuProps {
 const getMenuItems = (t: (key: string) => string) => [
   { title: t('menu.dashboard'), url: "/", icon: Home },
   { title: t('menu.transactions'), url: "/transactions", icon: FileText },
+  { title: t('menu.profile'), url: "/profile", icon: Settings },
   { title: t('menu.accounts'), url: "/accounts", icon: CreditCard },
   { title: t('menu.wallets'), url: "/wallets", icon: Wallet },
-  { title: t('menu.profile'), url: "/profile", icon: Settings },
 ];
 
 export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMenuProps) {
