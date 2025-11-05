@@ -134,6 +134,10 @@ export const translations = {
       createOffer: "Crear Oferta",
       ftc: "FTC (Fiat a Crypto)",
       ctf: "CTF (Crypto a Fiat)",
+      etaMinutes: "Tiempo de transacción (Min)",
+      notes: "Notas",
+      notesPlaceholder: "Ingresa una descripción",
+      submit: "Enviar Oferta",
       addBank: {
         title: "Agregar Cuenta Bancaria",
         bankName: "Nombre del Banco",
@@ -399,6 +403,10 @@ export const translations = {
       createOffer: "Create Offer",
       ftc: "FTC (Fiat to Crypto)",
       ctf: "CTF (Crypto to Fiat)",
+      etaMinutes: "Transaction Time (Min)",
+      notes: "Notes",
+      notesPlaceholder: "Enter a description",
+      submit: "Submit Offer",
       addBank: {
         title: "Add Bank Account",
         bankName: "Bank Name",

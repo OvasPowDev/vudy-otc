@@ -53,13 +53,13 @@ export function MakeOfferDialog({ open, onOpenChange, request, onOfferCreated }:
 
   // Fetch wallets
   const { data: wallets = [] } = useQuery<Wallet[]>({
-    queryKey: ['/api/wallets', { userId: user?.id }],
+    queryKey: [`/api/wallets?userId=${user?.id}`],
     enabled: !!user && open,
   });
 
   // Fetch bank accounts
   const { data: bankAccounts = [] } = useQuery<BankAccount[]>({
-    queryKey: ['/api/bank-accounts', { userId: user?.id }],
+    queryKey: [`/api/bank-accounts?userId=${user?.id}`],
     enabled: !!user && open,
   });
 
@@ -287,15 +287,19 @@ export function MakeOfferDialog({ open, onOpenChange, request, onOfferCreated }:
                       <FormLabel className="text-sm">
                         {t('makeOffer.etaMinutes')} <span className="text-destructive">*</span>
                       </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="30"
-                          className="h-9"
-                          {...field}
-                          data-testid="input-eta"
-                        />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-9" data-testid="select-eta">
+                            <SelectValue placeholder="30" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="30">30</SelectItem>
+                          <SelectItem value="60">60</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}

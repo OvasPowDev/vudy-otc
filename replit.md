@@ -61,6 +61,21 @@ Preferred communication style: Simple, everyday language.
 
 ## November 05, 2025
 
+### Wallet & Bank Account Display Fix
+- ✅ Fixed critical bug where wallets and bank accounts weren't displaying after creation
+- ✅ Changed queryKey format from object to URL string: `/api/wallets?userId=${user?.id}`
+- ✅ Updated cache invalidation to match new queryKey pattern in Wallets and BankAccounts components
+- ✅ Fixed MakeOfferDialog to use correct queryKey format for fetching user's wallets and bank accounts
+- ✅ Changed form validation mode from "onTouched" to "onChange" in BankAccounts for better UX
+
+### MakeOffer Form UI Improvements
+- ✅ Changed `etaMinutes` from text input to dropdown Select with options: 5, 10, 30, 60 minutes
+- ✅ Updated Spanish translation for `etaMinutes` to "Tiempo de transacción (Min)"
+- ✅ Updated `notes` label to "Notas" in Spanish and "Notes" in English
+- ✅ Changed notes placeholder to "Ingresa una descripción" (ES) / "Enter a description" (EN)
+- ✅ Added `submit` translation for offer form button
+- ✅ Wallets dropdown now correctly shows user's wallets from their profile
+
 ### Dashboard Translation Fixes
 - ✅ Fixed missing translations for dashboard statistics cards (totalTransactions, buyOrders, sellOrders, totalProcessed)
 - ✅ Fixed KanbanBoard view toggle buttons (liquidatorView, requesterView) translations
