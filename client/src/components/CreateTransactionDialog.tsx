@@ -1,7 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -10,7 +9,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface CreateTransactionDialogProps {
@@ -19,88 +18,39 @@ interface CreateTransactionDialogProps {
   onTransactionCreated?: (transaction: any) => void;
 }
 
-interface BankAccount {
-  id: string;
-  bankName: string;
-  currency: string;
-  accountNumber: string;
-}
-
-interface Wallet {
-  id: string;
-  name: string;
-  chain: string;
-  address: string;
-}
+// Datos de prueba predefinidos
+const TEST_DATA = {
+  bankAccount: {
+    id: "test-bank-001",
+    name: "Banco de Prueba - GTQ",
+    currency: "GTQ"
+  },
+  wallet: {
+    address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+    chain: "Polygon"
+  },
+  token: "USDT"
+};
 
 export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreated }: CreateTransactionDialogProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [transactionType, setTransactionType] = useState<"FTC" | "CTF" | null>(null);
 
-  // Fetch bank accounts
-  const { data: bankAccounts = [] } = useQuery<BankAccount[]>({
-    queryKey: ['/api/bank-accounts', { userId: user?.id }],
-    enabled: !!user && open,
-  });
-
-  // Fetch wallets
-  const { data: wallets = [] } = useQuery<Wallet[]>({
-    queryKey: ['/api/wallets', { userId: user?.id }],
-    enabled: !!user && open,
-  });
-
-  const chains = ["Polygon", "Ethereum", "Binance Smart Chain", "Avalanche"];
-  const tokens = ["USDT", "USDC", "DAI"];
-  const currencies = ["GTQ", "USD", "MXN"];
-
-  // FTC Schema (Fiat to Crypto)
-  const ftcSchema = z.object({
-    bankAccount: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
-    currency: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
+  // Schema simplificado - solo monto
+  const transactionSchema = z.object({
     amount: z.string()
       .min(1, { message: t('auth.errors.fieldRequired') })
       .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
         message: t('auth.errors.invalidAmount'),
       }),
-    chain: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
-    token: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
-    walletAddress: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
   });
 
-  // CTF Schema (Crypto to Fiat)
-  const ctfSchema = z.object({
-    wallet: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
-    token: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
-    amount: z.string()
-      .min(1, { message: t('auth.errors.fieldRequired') })
-      .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-        message: t('auth.errors.invalidAmount'),
-      }),
-    bankAccount: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
-  });
-
-  const ftcForm = useForm({
-    resolver: zodResolver(ftcSchema),
+  const form = useForm({
+    resolver: zodResolver(transactionSchema),
     mode: "onTouched",
     defaultValues: {
-      bankAccount: "",
-      currency: "",
       amount: "",
-      chain: "",
-      token: "",
-      walletAddress: "",
-    },
-  });
-
-  const ctfForm = useForm({
-    resolver: zodResolver(ctfSchema),
-    mode: "onTouched",
-    defaultValues: {
-      wallet: "",
-      token: "",
-      amount: "",
-      bankAccount: "",
     },
   });
 
@@ -126,56 +76,26 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
     },
   });
 
-  const onSubmitFTC = async (data: any) => {
+  const onSubmit = async (data: any) => {
     if (!user) {
       toast.error(t('auth.errors.notAuthenticated'));
       return;
     }
 
-    const transactionCode = `FTC-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+    const isFTC = transactionType === "FTC";
+    const transactionCode = `${transactionType}-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
 
     await createTransactionMutation.mutateAsync({
       userId: user.id,
-      type: 'buy',
+      type: isFTC ? 'buy' : 'sell',
       amountValue: parseFloat(data.amount),
-      amountCurrency: data.currency,
-      token: data.token,
-      walletAddress: data.walletAddress,
-      bankAccountId: data.bankAccount,
+      amountCurrency: TEST_DATA.bankAccount.currency,
+      token: TEST_DATA.token,
+      walletAddress: TEST_DATA.wallet.address,
+      bankAccountId: TEST_DATA.bankAccount.id,
       code: transactionCode,
-      direction: 'FTC',
-      chain: data.chain,
-      status: 'pending',
-    });
-  };
-
-  const onSubmitCTF = async (data: any) => {
-    if (!user) {
-      toast.error(t('auth.errors.notAuthenticated'));
-      return;
-    }
-
-    const selectedWallet = wallets.find(w => w.id === data.wallet);
-    const selectedBank = bankAccounts.find(b => b.id === data.bankAccount);
-
-    if (!selectedWallet || !selectedBank) {
-      toast.error(t('createTransaction.errorCreating'));
-      return;
-    }
-
-    const transactionCode = `CTF-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-
-    await createTransactionMutation.mutateAsync({
-      userId: user.id,
-      type: 'sell',
-      amountValue: parseFloat(data.amount),
-      amountCurrency: selectedBank.currency,
-      token: data.token,
-      walletAddress: selectedWallet.address,
-      bankAccountId: data.bankAccount,
-      code: transactionCode,
-      direction: 'CTF',
-      chain: selectedWallet.chain,
+      direction: transactionType,
+      chain: TEST_DATA.wallet.chain,
       status: 'pending',
     });
   };
@@ -183,13 +103,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
   const handleClose = () => {
     onOpenChange(false);
     setTransactionType(null);
-    ftcForm.reset();
-    ctfForm.reset();
-  };
-
-  const getSelectedWallet = () => {
-    const walletId = ctfForm.watch("wallet");
-    return wallets.find(w => w.id === walletId);
+    form.reset();
   };
 
   return (
@@ -225,249 +139,50 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
               </Button>
             </div>
           </div>
-        ) : transactionType === "FTC" ? (
-          <Form {...ftcForm}>
-            <form onSubmit={ftcForm.handleSubmit(onSubmitFTC)} className="space-y-4" data-testid="form-ftc">
-              <FormField
-                control={ftcForm.control}
-                name="bankAccount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      {t('createTransaction.fromAccount')} <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-9" data-testid="select-bank-account">
-                          <SelectValue placeholder={t('createTransaction.selectAccount')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {bankAccounts.map(account => (
-                          <SelectItem key={account.id} value={account.id} className="text-sm">
-                            {account.bankName} ({account.accountNumber})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={ftcForm.control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      {t('createTransaction.currency')} <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-9" data-testid="select-currency">
-                          <SelectValue placeholder={t('createTransaction.selectCurrency')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {currencies.map(currency => (
-                          <SelectItem key={currency} value={currency}>{currency}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={ftcForm.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      {t('createTransaction.amount')} <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder={t('createTransaction.enterAmount')}
-                        className="h-9"
-                        {...field}
-                        data-testid="input-amount"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  control={ftcForm.control}
-                  name="chain"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        {t('createTransaction.chain')} <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-9" data-testid="select-chain">
-                            <SelectValue placeholder={t('createTransaction.selectChain')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {chains.map(chain => (
-                            <SelectItem key={chain} value={chain}>{chain}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={ftcForm.control}
-                  name="token"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        {t('createTransaction.token')} <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-9" data-testid="select-token">
-                            <SelectValue placeholder={t('createTransaction.selectToken')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {tokens.map(token => (
-                            <SelectItem key={token} value={token}>{token}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={ftcForm.control}
-                name="walletAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      {t('createTransaction.walletAddress')} <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="0x..."
-                        className="h-9 font-mono text-sm"
-                        {...field}
-                        data-testid="input-wallet-address"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" variant="outline" onClick={handleClose} size="sm" data-testid="button-cancel">
-                  {t('createTransaction.cancel')}
-                </Button>
-                <Button type="submit" size="sm" disabled={!ftcForm.formState.isValid || createTransactionMutation.isPending} data-testid="button-submit">
-                  {createTransactionMutation.isPending ? t('auth.loading') : t('createTransaction.create')}
-                </Button>
-              </div>
-            </form>
-          </Form>
         ) : (
-          <Form {...ctfForm}>
-            <form onSubmit={ctfForm.handleSubmit(onSubmitCTF)} className="space-y-4" data-testid="form-ctf">
-              <FormField
-                control={ctfForm.control}
-                name="wallet"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      {t('createTransaction.fromWallet')} <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-9" data-testid="select-wallet">
-                          <SelectValue placeholder={t('createTransaction.selectWallet')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {wallets.map(wallet => (
-                          <SelectItem key={wallet.id} value={wallet.id} className="text-sm">
-                            {wallet.name} ({wallet.chain})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              {getSelectedWallet() && (
-                <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t('createTransaction.chain')}:</span>
-                    <span className="font-medium">{getSelectedWallet()?.chain}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t('createTransaction.address')}:</span>
-                    <span className="font-mono text-xs">{getSelectedWallet()?.address.substring(0, 10)}...</span>
-                  </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="form-transaction">
+              
+              {/* Información de la transacción */}
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Tipo:</span>
+                  <span className="text-sm font-bold">{transactionType === "FTC" ? "Fiat → Crypto" : "Crypto → Fiat"}</span>
                 </div>
-              )}
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Cuenta:</span>
+                  <span className="text-sm">{TEST_DATA.bankAccount.name}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Token:</span>
+                  <span className="text-sm font-medium">{TEST_DATA.token} ({TEST_DATA.wallet.chain})</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Wallet:</span>
+                  <span className="text-xs font-mono">{TEST_DATA.wallet.address.substring(0, 10)}...{TEST_DATA.wallet.address.substring(38)}</span>
+                </div>
+              </div>
 
+              {/* Campo de monto */}
               <FormField
-                control={ctfForm.control}
-                name="token"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      {t('createTransaction.token')} <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-9" data-testid="select-token-ctf">
-                          <SelectValue placeholder={t('createTransaction.selectToken')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {tokens.map(token => (
-                          <SelectItem key={token} value={token}>{token}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={ctfForm.control}
+                control={form.control}
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      {t('createTransaction.amount')} <span className="text-destructive">*</span>
+                      {t('createTransaction.amount')} ({TEST_DATA.bankAccount.currency}) <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         placeholder={t('createTransaction.enterAmount')}
-                        className="h-9"
+                        className="h-10 text-lg"
                         {...field}
                         data-testid="input-amount"
+                        autoFocus
                       />
                     </FormControl>
                     <FormMessage className="text-xs" />
@@ -475,38 +190,22 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                 )}
               />
 
-              <FormField
-                control={ctfForm.control}
-                name="bankAccount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      {t('createTransaction.toAccount')} <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-9" data-testid="select-bank-account">
-                          <SelectValue placeholder={t('createTransaction.selectAccount')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {bankAccounts.map(account => (
-                          <SelectItem key={account.id} value={account.id} className="text-sm">
-                            {account.bankName} ({account.currency})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
               <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" variant="outline" onClick={handleClose} size="sm" data-testid="button-cancel">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleClose} 
+                  size="sm" 
+                  data-testid="button-cancel"
+                >
                   {t('createTransaction.cancel')}
                 </Button>
-                <Button type="submit" size="sm" disabled={!ctfForm.formState.isValid || createTransactionMutation.isPending} data-testid="button-submit">
+                <Button 
+                  type="submit" 
+                  size="sm" 
+                  disabled={!form.formState.isValid || createTransactionMutation.isPending} 
+                  data-testid="button-submit"
+                >
                   {createTransactionMutation.isPending ? t('auth.loading') : t('createTransaction.create')}
                 </Button>
               </div>
