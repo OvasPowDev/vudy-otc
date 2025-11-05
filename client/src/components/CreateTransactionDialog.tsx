@@ -71,6 +71,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
   // CTF Schema (Crypto to Fiat)
   const ctfSchema = z.object({
     wallet: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
+    token: z.string().min(1, { message: t('auth.errors.fieldRequired') }),
     amount: z.string()
       .min(1, { message: t('auth.errors.fieldRequired') })
       .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
@@ -97,6 +98,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
     mode: "onTouched",
     defaultValues: {
       wallet: "",
+      token: "",
       amount: "",
       bankAccount: "",
     },
@@ -168,7 +170,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
       type: 'sell',
       amountValue: parseFloat(data.amount),
       amountCurrency: selectedBank.currency,
-      token: 'USDT', // Default token, can be customized
+      token: data.token,
       walletAddress: selectedWallet.address,
       bankAccountId: data.bankAccount,
       code: transactionCode,
@@ -425,6 +427,31 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                   </div>
                 </div>
               )}
+
+              <FormField
+                control={ctfForm.control}
+                name="token"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      {t('createTransaction.token')} <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9" data-testid="select-token-ctf">
+                          <SelectValue placeholder={t('createTransaction.selectToken')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {tokens.map(token => (
+                          <SelectItem key={token} value={token}>{token}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={ctfForm.control}
