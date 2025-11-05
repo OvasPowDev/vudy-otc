@@ -47,6 +47,15 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 - ✅ Successfully tested CTF (Crypto to Fiat) transaction creation with type='sell'
 - ✅ All transactions properly created in 'pending' status
 
+### Simplified Transaction Form (Nov 05, 2025)
+- ✅ Simplified CreateTransactionDialog to use predefined test data
+- ✅ Removed bank account and wallet selection queries
+- ✅ Form now only requires amount input from user
+- ✅ Predefined test data: Banco de Prueba (GTQ), Wallet 0x742d35...f0bEb (Polygon), USDT token
+- ✅ Single unified schema for both FTC and CTF transactions
+- ✅ Clear UX showing all transaction details before submission
+- ✅ Faster testing workflow - select type, enter amount, create transaction
+
 ### Infrastructure & Backend
 - ✅ Converted Supabase schema to Drizzle ORM schema
 - ✅ Migrated Supabase Edge Functions to Express API routes  
