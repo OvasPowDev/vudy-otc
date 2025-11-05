@@ -1,4 +1,4 @@
-import { Home, FileText, Settings, LogOut, Moon, Sun, CreditCard } from "lucide-react";
+import { Home, FileText, Settings, LogOut, Moon, Sun, CreditCard, Wallet } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { User } from "@lib/auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +26,7 @@ const getMenuItems = (t: (key: string) => string) => [
   { title: t('menu.dashboard'), url: "/", icon: Home },
   { title: t('menu.transactions'), url: "/transactions", icon: FileText },
   { title: t('menu.accounts'), url: "/accounts", icon: CreditCard },
+  { title: t('menu.wallets'), url: "/wallets", icon: Wallet },
   { title: t('menu.profile'), url: "/profile", icon: Settings },
 ];
 
@@ -44,6 +45,7 @@ export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMe
           dashboard: "Dashboard",
           transactions: "Transacciones",
           accounts: "Cuentas",
+          wallets: "Wallets",
           profile: "Perfil",
           settings: "Configuración",
           theme: "Tema",
@@ -60,6 +62,7 @@ export function MobileMenu({ user, currentLanguage, onLanguageChange }: MobileMe
           dashboard: "Dashboard",
           transactions: "Transactions",
           accounts: "Accounts",
+          wallets: "Wallets",
           profile: "Profile",
           settings: "Settings",
           theme: "Theme",

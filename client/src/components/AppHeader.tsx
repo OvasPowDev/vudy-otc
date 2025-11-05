@@ -1,4 +1,4 @@
-import { Home, FileText, Settings, LogOut, CreditCard, Plus } from "lucide-react";
+import { Home, FileText, Settings, LogOut, CreditCard, Plus, Wallet } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { UserProfile } from "@/components/UserProfile";
@@ -25,6 +25,7 @@ const getMenuItems = (t: (key: string) => string) => [
   { title: t('menu.dashboard'), url: "/", icon: Home },
   { title: t('menu.transactions'), url: "/transactions", icon: FileText },
   { title: t('menu.accounts'), url: "/accounts", icon: CreditCard },
+  { title: t('menu.wallets'), url: "/wallets", icon: Wallet },
   { title: t('menu.profile'), url: "/profile", icon: Settings },
 ];
 
@@ -50,6 +51,7 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
           dashboard: "Dashboard",
           transactions: "Transacciones",
           accounts: "Cuentas",
+          wallets: "Wallets",
           profile: "Perfil",
         }
       },
@@ -58,6 +60,7 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
           dashboard: "Dashboard",
           transactions: "Transactions",
           accounts: "Accounts",
+          wallets: "Wallets",
           profile: "Profile",
         }
       }
