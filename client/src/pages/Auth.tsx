@@ -643,8 +643,8 @@ const Auth = () => {
       </div>
 
       {/* Right Side - Welcome Panel */}
-      <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-teal-600 via-teal-700 to-slate-800 dark:from-teal-800 dark:via-slate-800 dark:to-slate-950 p-12">
-        <div className="max-w-lg text-white space-y-6">
+      <div className="hidden md:flex items-center justify-center bg-primary p-12">
+        <div className="max-w-lg text-primary-foreground space-y-6">
           <div className="space-y-4">
             <h2 className="text-4xl font-bold leading-tight">
               {t('auth.welcomeTitle')}
