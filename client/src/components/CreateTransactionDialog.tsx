@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useNavigate } from "react-router-dom";
 
 interface CreateTransactionDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ const TEST_DATA = {
 export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreated }: CreateTransactionDialogProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [transactionType, setTransactionType] = useState<"FTC" | "CTF" | null>(null);
 
   // Schema simplificado - solo monto
@@ -69,6 +71,8 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
         onTransactionCreated({});
       }
       handleClose();
+      // Redirigir al dashboard después de crear la transacción
+      navigate('/');
     },
     onError: (error: any) => {
       console.error('Error creating transaction:', error);
@@ -146,22 +150,22 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
               {/* Información de la transacción */}
               <div className="bg-muted p-4 rounded-lg space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Tipo:</span>
-                  <span className="text-sm font-bold">{transactionType === "FTC" ? "Fiat → Crypto" : "Crypto → Fiat"}</span>
+                  <span className="text-sm font-medium">{t('createTransaction.type')}:</span>
+                  <span className="text-sm font-bold">{transactionType === "FTC" ? t('createTransaction.fiatToCrypto') : t('createTransaction.cryptoToFiat')}</span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Cuenta:</span>
+                  <span className="text-sm text-muted-foreground">{t('createTransaction.account')}:</span>
                   <span className="text-sm">{TEST_DATA.bankAccount.name}</span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Token:</span>
+                  <span className="text-sm text-muted-foreground">{t('createTransaction.token')}:</span>
                   <span className="text-sm font-medium">{TEST_DATA.token} ({TEST_DATA.wallet.chain})</span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Wallet:</span>
+                  <span className="text-sm text-muted-foreground">{t('createTransaction.wallet')}:</span>
                   <span className="text-xs font-mono">{TEST_DATA.wallet.address.substring(0, 10)}...{TEST_DATA.wallet.address.substring(38)}</span>
                 </div>
               </div>

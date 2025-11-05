@@ -55,6 +55,7 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 - ✅ Single unified schema for both FTC and CTF transactions
 - ✅ Clear UX showing all transaction details before submission
 - ✅ Faster testing workflow - select type, enter amount, create transaction
+- ✅ Auto-redirect to dashboard after successful transaction creation
 
 ### Infrastructure & Backend
 - ✅ Converted Supabase schema to Drizzle ORM schema

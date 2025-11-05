@@ -166,7 +166,7 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
                 data-testid="button-create-transaction"
               >
                 <Plus className="h-4 w-4" />
-                <span>Crear Transacción</span>
+                <span>{t('createTransaction.title')}</span>
               </Button>
             )}
             <ThemeToggle />

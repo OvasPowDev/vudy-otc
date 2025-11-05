@@ -29,7 +29,9 @@ export const translations = {
         countryRequired: "El país es obligatorio",
         fieldRequired: "Este campo es obligatorio",
         otpInvalid: "Código inválido o expirado",
-        somethingWrong: "Algo salió mal, intenta de nuevo"
+        somethingWrong: "Algo salió mal, intenta de nuevo",
+        invalidAmount: "El monto debe ser mayor a 0",
+        notAuthenticated: "Debes iniciar sesión primero"
       },
       success: {
         otpSent: "Código enviado a tu correo",
@@ -145,7 +147,14 @@ export const translations = {
       walletAddress: "Dirección de wallet",
       balance: "Saldo USDT",
       cancel: "Cancelar",
-      create: "Crear requerimiento",
+      create: "Crear",
+      type: "Tipo",
+      account: "Cuenta",
+      wallet: "Wallet",
+      fiatToCrypto: "Fiat → Crypto",
+      cryptoToFiat: "Crypto → Fiat",
+      successCreated: "¡Transacción creada exitosamente!",
+      errorCreating: "Error al crear la transacción"
     },
     bankAccounts: {
       title: "Cuentas Bancarias",
@@ -171,6 +180,20 @@ export const translations = {
       loadError: "Error al cargar las cuentas",
       addError: "Error al agregar la cuenta",
       deleteError: "Error al eliminar la cuenta",
+    },
+    wallets: {
+      title: "Mis Wallets",
+      addWallet: "Agregar Wallet",
+      addFirstWallet: "Agregar Primera Wallet",
+      walletAdded: "Wallet agregada correctamente",
+      walletDeleted: "Wallet eliminada correctamente",
+      addWalletTitle: "Agregar Wallet",
+      walletName: "Nombre",
+      walletNamePlaceholder: "Mi Wallet Principal",
+      address: "Dirección",
+      chain: "Cadena",
+      cancel: "Cancelar",
+      add: "Agregar"
     },
     menu: {
       menu: "Menú",
@@ -254,7 +277,9 @@ export const translations = {
         countryRequired: "Country is required",
         fieldRequired: "This field is required",
         otpInvalid: "Invalid or expired code",
-        somethingWrong: "Something went wrong, please try again"
+        somethingWrong: "Something went wrong, please try again",
+        invalidAmount: "Amount must be greater than 0",
+        notAuthenticated: "You must log in first"
       },
       success: {
         otpSent: "Code sent to your email",
@@ -370,7 +395,14 @@ export const translations = {
       walletAddress: "Wallet address",
       balance: "USDT Balance",
       cancel: "Cancel",
-      create: "Create requirement",
+      create: "Create",
+      type: "Type",
+      account: "Account",
+      wallet: "Wallet",
+      fiatToCrypto: "Fiat → Crypto",
+      cryptoToFiat: "Crypto → Fiat",
+      successCreated: "Transaction created successfully!",
+      errorCreating: "Error creating transaction"
     },
     bankAccounts: {
       title: "Bank Accounts",
@@ -396,6 +428,20 @@ export const translations = {
       loadError: "Error loading accounts",
       addError: "Error adding account",
       deleteError: "Error deleting account",
+    },
+    wallets: {
+      title: "My Wallets",
+      addWallet: "Add Wallet",
+      addFirstWallet: "Add First Wallet",
+      walletAdded: "Wallet added successfully",
+      walletDeleted: "Wallet deleted successfully",
+      addWalletTitle: "Add Wallet",
+      walletName: "Name",
+      walletNamePlaceholder: "My Main Wallet",
+      address: "Address",
+      chain: "Chain",
+      cancel: "Cancel",
+      add: "Add"
     },
     menu: {
       menu: "Menu",

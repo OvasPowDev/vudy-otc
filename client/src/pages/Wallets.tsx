@@ -37,7 +37,7 @@ const chains = [
 
 const Wallets = () => {
   const navigate = useNavigate();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -81,8 +81,8 @@ const Wallets = () => {
     },
     onSuccess: () => {
       toast({
-        title: "Éxito",
-        description: "Wallet agregada correctamente",
+        title: t('bankAccounts.success'),
+        description: t('wallets.walletAdded'),
       });
       setDialogOpen(false);
       form.reset();
@@ -104,8 +104,8 @@ const Wallets = () => {
     },
     onSuccess: () => {
       toast({
-        title: "Éxito",
-        description: "Wallet eliminada correctamente",
+        title: t('bankAccounts.success'),
+        description: t('wallets.walletDeleted'),
       });
       queryClient.invalidateQueries({ queryKey: ['/api/wallets'] });
     },
@@ -131,8 +131,8 @@ const Wallets = () => {
     setCopiedAddress(address);
     setTimeout(() => setCopiedAddress(null), 2000);
     toast({
-      title: "Copiado",
-      description: "Dirección copiada al portapapeles",
+      title: t('bankAccounts.success'),
+      description: t('wallets.address') + " " + (language === 'es' ? 'copiada al portapapeles' : 'copied to clipboard'),
     });
   };
 
@@ -151,26 +151,26 @@ const Wallets = () => {
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">Mis Wallets</h2>
-              <p className="text-sm sm:text-base text-muted-foreground">Gestiona tus billeteras de criptomonedas</p>
+              <h2 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">{t('wallets.title')}</h2>
+              <p className="text-sm sm:text-base text-muted-foreground">{language === 'es' ? 'Gestiona tus billeteras de criptomonedas' : 'Manage your cryptocurrency wallets'}</p>
             </div>
             <Button onClick={() => setDialogOpen(true)} className="gap-2" data-testid="button-add-wallet">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Agregar Wallet</span>
+              <span className="hidden sm:inline">{t('wallets.addWallet')}</span>
             </Button>
           </div>
 
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Cargando wallets...</p>
+              <p className="text-muted-foreground">{t('auth.loading')}</p>
             </div>
           ) : wallets.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground text-center mb-4">No tienes wallets registradas</p>
+                <p className="text-muted-foreground text-center mb-4">{language === 'es' ? 'No tienes wallets registradas' : 'You don\'t have any registered wallets'}</p>
                 <Button onClick={() => setDialogOpen(true)} className="gap-2" data-testid="button-add-first">
                   <Plus className="h-4 w-4" />
-                  Agregar Primera Wallet
+                  {t('wallets.addFirstWallet')}
                 </Button>
               </CardContent>
             </Card>
@@ -187,7 +187,7 @@ const Wallets = () => {
                           <div>
                             <CardTitle className="text-lg flex items-center gap-2">
                               {wallet.name}
-                              {wallet.isDefault && <Badge variant="secondary" className="text-xs">Por defecto</Badge>}
+                              {wallet.isDefault && <Badge variant="secondary" className="text-xs">{language === 'es' ? 'Por defecto' : 'Default'}</Badge>}
                             </CardTitle>
                             <p className="text-sm text-muted-foreground">{chainInfo?.name}</p>
                           </div>
@@ -206,7 +206,7 @@ const Wallets = () => {
                     <CardContent>
                       <div className="space-y-2">
                         <div>
-                          <p className="text-xs text-muted-foreground">Dirección</p>
+                          <p className="text-xs text-muted-foreground">{t('wallets.address')}</p>
                           <div className="flex items-center gap-2">
                             <p className="font-mono text-sm flex-1 truncate" data-testid={`text-address-${wallet.id}`}>
                               {wallet.address}
@@ -239,7 +239,7 @@ const Wallets = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Agregar Wallet</DialogTitle>
+            <DialogTitle>{t('wallets.addWalletTitle')}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="form-add-wallet">
@@ -249,11 +249,11 @@ const Wallets = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Nombre <span className="text-destructive">*</span>
+                      {t('wallets.walletName')} <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Mi Wallet Principal"
+                        placeholder={t('wallets.walletNamePlaceholder')}
                         className="h-9"
                         {...field}
                         data-testid="input-wallet-name"
@@ -270,12 +270,12 @@ const Wallets = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Cadena <span className="text-destructive">*</span>
+                      {t('wallets.chain')} <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-9" data-testid="select-chain">
-                          <SelectValue placeholder="Selecciona una cadena" />
+                          <SelectValue placeholder={language === 'es' ? 'Selecciona una cadena' : 'Select a chain'} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -300,7 +300,7 @@ const Wallets = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Dirección <span className="text-destructive">*</span>
+                      {t('wallets.address')} <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -320,10 +320,10 @@ const Wallets = () => {
                   setDialogOpen(false);
                   form.reset();
                 }} size="sm" data-testid="button-cancel">
-                  Cancelar
+                  {t('wallets.cancel')}
                 </Button>
                 <Button type="submit" size="sm" disabled={!form.formState.isValid} data-testid="button-submit">
-                  Agregar
+                  {t('wallets.add')}
                 </Button>
               </div>
             </form>
