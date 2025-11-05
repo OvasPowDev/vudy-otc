@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import BankAccounts from "./pages/BankAccounts";
 import Wallets from "./pages/Wallets";
 import Transactions from "./pages/Transactions";
+import ApiSettings from "./pages/ApiSettings";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/accounts" element={<BankAccounts />} />
             <Route path="/wallets" element={<Wallets />} />
             <Route path="/transactions" element={<Transactions />} />
+            <Route path="/api-settings" element={<ApiSettings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

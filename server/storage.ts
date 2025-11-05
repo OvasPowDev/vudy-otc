@@ -1,14 +1,16 @@
 import { db } from "./db";
 import { 
-  profiles, bankAccounts, notifications, transactions, wallets, otcOffers,
+  profiles, bankAccounts, notifications, transactions, wallets, otcOffers, apiKeys,
   type Profile, type InsertProfile,
   type BankAccount, type InsertBankAccount,
   type Notification, type InsertNotification,
   type Transaction, type InsertTransaction,
   type Wallet, type InsertWallet,
-  type OtcOffer, type InsertOtcOffer
+  type OtcOffer, type InsertOtcOffer,
+  type ApiKey, type InsertApiKey
 } from "@shared/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
+import crypto from "crypto";
 
 export interface IStorage {
   // Profiles
@@ -54,6 +56,14 @@ export interface IStorage {
   createOtcOffer(data: InsertOtcOffer): Promise<OtcOffer>;
   updateOfferStatus(id: string, status: "open" | "won" | "lost"): Promise<OtcOffer | undefined>;
   updateMultipleOfferStatuses(transactionId: string, winnerId: string): Promise<void>;
+
+  // API Keys
+  getApiKeys(userId: string): Promise<ApiKey[]>;
+  getApiKeyByHash(keyHash: string): Promise<ApiKey | undefined>;
+  createApiKey(data: InsertApiKey): Promise<ApiKey>;
+  updateApiKeyLastUsed(id: string): Promise<void>;
+  revokeApiKey(id: string): Promise<void>;
+  generateApiKey(userId: string, name: string): Promise<{ apiKey: ApiKey; plainKey: string }>;
 }
 
 export class DbStorage implements IStorage {
@@ -247,6 +257,58 @@ export class DbStorage implements IStorage {
       const newStatus = offer.id === winnerId ? "won" : "lost";
       await db.update(otcOffers).set({ status: newStatus }).where(eq(otcOffers.id, offer.id));
     }
+  }
+
+  async getApiKeys(userId: string): Promise<ApiKey[]> {
+    return await db.select().from(apiKeys)
+      .where(eq(apiKeys.userId, userId))
+      .orderBy(desc(apiKeys.createdAt));
+  }
+
+  async getApiKeyByHash(keyHash: string): Promise<ApiKey | undefined> {
+    const result = await db.select().from(apiKeys)
+      .where(and(
+        eq(apiKeys.keyHash, keyHash),
+        eq(apiKeys.isActive, true)
+      ));
+    return result[0];
+  }
+
+  async createApiKey(data: InsertApiKey): Promise<ApiKey> {
+    const result = await db.insert(apiKeys).values(data).returning();
+    return result[0];
+  }
+
+  async updateApiKeyLastUsed(id: string): Promise<void> {
+    await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, id));
+  }
+
+  async revokeApiKey(id: string): Promise<void> {
+    await db.update(apiKeys)
+      .set({ isActive: false, revokedAt: new Date() })
+      .where(eq(apiKeys.id, id));
+  }
+
+  async generateApiKey(userId: string, name: string): Promise<{ apiKey: ApiKey; plainKey: string }> {
+    // Generate a random API key
+    const plainKey = `vdy_${crypto.randomBytes(32).toString('hex')}`;
+    
+    // Hash the key for storage
+    const keyHash = crypto.createHash('sha256').update(plainKey).digest('hex');
+    
+    // Store only the prefix for display
+    const keyPrefix = plainKey.substring(0, 11);
+    
+    // Create the API key record
+    const apiKey = await this.createApiKey({
+      userId,
+      name,
+      keyHash,
+      keyPrefix,
+      isActive: true,
+    });
+    
+    return { apiKey, plainKey };
   }
 }
 

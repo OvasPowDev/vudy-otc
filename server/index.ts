@@ -1,7 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
+import { registerExternalRoutes } from "./externalRoutes";
 import { setupVite, serveStatic, log } from "./vite";
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger';
 
 const app = express();
 app.use(express.json());
@@ -92,7 +95,15 @@ app.use((req, res, next) => {
     });
   });
 
+  // Swagger Documentation
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Vudy OTC Hub API Docs',
+  }));
+
+  // Register internal and external routes
   registerRoutes(app);
+  registerExternalRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

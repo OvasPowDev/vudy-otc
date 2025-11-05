@@ -466,4 +466,28 @@ export function registerRoutes(app: Express) {
     const offer = await storage.createOtcOffer(validated);
     return res.json(offer);
   });
+
+  // API Keys Management
+  app.get("/api/api-keys", async (req: Request, res: Response) => {
+    const userId = req.query.userId as string;
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    const keys = await storage.getApiKeys(userId);
+    return res.json(keys);
+  });
+
+  app.post("/api/api-keys", async (req: Request, res: Response) => {
+    const { userId, name } = req.body;
+    if (!userId || !name) {
+      return res.status(400).json({ error: "userId and name are required" });
+    }
+    const result = await storage.generateApiKey(userId, name);
+    return res.json(result);
+  });
+
+  app.delete("/api/api-keys/:id", async (req: Request, res: Response) => {
+    await storage.revokeApiKey(req.params.id);
+    return res.json({ success: true });
+  });
 }

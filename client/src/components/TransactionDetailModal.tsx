@@ -126,6 +126,50 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Client Information */}
+                {(transaction.clientAlias || transaction.clientKycUrl || transaction.clientNotes) && (
+                  <div className="p-3 bg-muted rounded-lg space-y-2">
+                    <p className="text-sm font-semibold">{t('transactionDetail.clientInformation')}</p>
+                    {transaction.clientAlias && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('transactionDetail.client')}</p>
+                        <p className="font-medium">{transaction.clientAlias}</p>
+                      </div>
+                    )}
+                    {transaction.clientKycUrl && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">KYC</p>
+                        <a 
+                          href={transaction.clientKycUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {t('transactionDetail.kycDownload')}
+                        </a>
+                      </div>
+                    )}
+                    {transaction.clientNotes && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('transactionDetail.clientNotes')}</p>
+                        <p className="text-sm">{transaction.clientNotes}</p>
+                      </div>
+                    )}
+                    {transaction.requestOrigin && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('transactionDetail.requestOrigin')}</p>
+                        <p className="text-sm capitalize">{transaction.requestOrigin}</p>
+                      </div>
+                    )}
+                    {transaction.slaMinutes && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('transactionDetail.sla')}</p>
+                        <p className="text-sm">{transaction.slaMinutes} {t('dashboard.filters') === 'Filtros' ? 'minutos' : 'minutes'}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-xs text-muted-foreground">Código</p>

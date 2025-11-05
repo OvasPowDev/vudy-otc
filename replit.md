@@ -59,7 +59,62 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-## November 05, 2025
+## November 05, 2025 (PM)
+
+### API Keys & External Integration System
+- ✅ **Database Schema Updates**:
+  - Added `api_keys` table with fields: userId, name, keyHash, keyPrefix, lastUsedAt, isActive, createdAt, revokedAt
+  - Added client fields to `transactions`: clientAlias, clientKycUrl, clientNotes, requestOrigin, internalNotes, slaMinutes
+  - Created `requestOriginEnum` for tracking transaction source (whatsapp, api, form, manual)
+
+- ✅ **Backend Infrastructure**:
+  - Created storage methods for API key management (create, get, validate, revoke, generateApiKey)
+  - Implemented `validateApiKey` middleware in `server/middleware/apiAuth.ts` for API authentication
+  - API keys follow format `vdy_[64-char hex]` with SHA-256 hashing for storage
+  - Only key prefix (first 11 chars) stored for display, full hash used for validation
+
+- ✅ **External API Endpoint**:
+  - Created `POST /api/external/transactions` endpoint in `server/externalRoutes.ts`
+  - Accepts FTC (Fiat to Crypto) and CTF (Crypto to Fiat) transaction requests
+  - Validates API key via `x-api-key` header
+  - Supports client metadata: alias, KYC URL, notes, request origin, SLA
+
+- ✅ **Swagger/OpenAPI Documentation**:
+  - Installed swagger-jsdoc and swagger-ui-express packages
+  - Created `server/swagger.ts` with complete API documentation
+  - Swagger UI available at `/api-docs` with custom branding
+  - Documented all schemas: Transaction, OtcOffer, ApiKey
+  - Comprehensive JSDoc for external transaction endpoint
+
+- ✅ **API Management Interface**:
+  - Created `/api-settings` page with complete API key CRUD interface
+  - Features: List keys, create new, revoke existing, view last used timestamp
+  - Created `CreateApiKeyDialog` component with one-time key reveal
+  - Security warning: Generated key shown only once with copy-to-clipboard
+  - Added Layout component with dropdown menu including API Settings link
+
+- ✅ **Frontend Components**:
+  - Updated `TransactionDetailModal` to display client information section
+  - Shows: clientAlias, KYC download link, client notes, request origin, SLA minutes
+  - All labels properly internationalized in Spanish and English
+
+- ✅ **Internationalization**:
+  - Added complete Spanish and English translations for API Settings
+  - Added translations for client information fields in transaction details
+  - Translation keys: apiSettings.*, transactionDetail.*, common.*
+
+- ✅ **Routes & Navigation**:
+  - Added `/api-settings` route to App.tsx
+  - Integrated API Settings link in user dropdown menu
+  - Documentation link opens Swagger UI in new tab
+
+- ✅ **Backend API Endpoints**:
+  - `GET /api/api-keys?userId=X` - List user's API keys
+  - `POST /api/api-keys` - Generate new API key (returns plainKey once)
+  - `DELETE /api/api-keys/:id` - Revoke API key
+  - `POST /api/external/transactions` - Create transaction via API (requires API key)
+
+## November 05, 2025 (AM)
 
 ### Wallet & Bank Account Display Fix
 - ✅ Fixed critical bug where wallets and bank accounts weren't displaying after creation

@@ -5,6 +5,7 @@ import { z } from "zod";
 export const transactionTypeEnum = pgEnum("transaction_type", ["buy", "sell"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "escrow", "completed", "failed"]);
 export const offerStatusEnum = pgEnum("offer_status", ["open", "won", "lost"]);
+export const requestOriginEnum = pgEnum("request_origin", ["whatsapp", "api", "form", "manual"]);
 
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -64,6 +65,12 @@ export const transactions = pgTable("transactions", {
   acceptedByUserId: uuid("accepted_by_user_id"),
   winnerOtcId: uuid("winner_otc_id"),
   proofUploaded: boolean("proof_uploaded").default(false),
+  clientAlias: text("client_alias"),
+  clientKycUrl: text("client_kyc_url"),
+  clientNotes: text("client_notes"),
+  requestOrigin: requestOriginEnum("request_origin"),
+  internalNotes: text("internal_notes"),
+  slaMinutes: integer("sla_minutes"),
 });
 
 export const wallets = pgTable("wallets", {
@@ -92,12 +99,25 @@ export const otcOffers = pgTable("otc_offers", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull(),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  keyPrefix: text("key_prefix").notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+});
+
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWalletSchema = createInsertSchema(wallets).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOtcOfferSchema = createInsertSchema(otcOffers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({ id: true, createdAt: true });
 
 export type Profile = typeof profiles.$inferSelect;
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
@@ -111,3 +131,5 @@ export type Wallet = typeof wallets.$inferSelect;
 export type InsertWallet = z.infer<typeof insertWalletSchema>;
 export type OtcOffer = typeof otcOffers.$inferSelect;
 export type InsertOtcOffer = z.infer<typeof insertOtcOfferSchema>;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
