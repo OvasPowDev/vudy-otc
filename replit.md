@@ -82,3 +82,17 @@ Preferred communication style: Simple, everyday language.
 - ✅ Fixed transaction creation error: `amountValue` now correctly sent as string instead of number
 - ✅ Transactions now properly saved to database after creation
 - ✅ Dashboard correctly displays created transactions after submission
+
+### Real-Time Kanban Updates (SSE)
+- ✅ Implemented Server-Sent Events (SSE) for real-time Kanban board updates
+- ✅ **Backend**: Created `/events` endpoint with client management, heartbeat (25s), and cleanup
+- ✅ **Backend**: Added `broadcast()` function to notify all connected clients
+- ✅ **Backend**: Emit `tx.created` event after creating transaction
+- ✅ **Backend**: Emit `tx.updated` event after updating transaction
+- ✅ **Frontend**: SSE subscription in KanbanBoard with automatic reconnection
+- ✅ **Frontend**: Client-side filter logic to show only relevant transactions
+- ✅ **Frontend**: Type mapping: `fiat_to_crypto` → `buy`, `crypto_to_fiat` → `sell`
+- ✅ **Frontend**: React Query cache invalidation for automatic UI refresh
+- ✅ **No refresh needed**: New/updated transactions appear instantly in Kanban
+- ✅ **Filter-aware**: Only shows transactions matching current type/date filters
+- ✅ **Performance**: EventSource auto-reconnects, no external dependencies
