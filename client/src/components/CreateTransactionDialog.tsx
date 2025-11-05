@@ -92,7 +92,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
     await createTransactionMutation.mutateAsync({
       userId: user.id,
       type: isFTC ? 'buy' : 'sell',
-      amountValue: parseFloat(data.amount),
+      amountValue: data.amount.toString(),
       amountCurrency: TEST_DATA.bankAccount.currency,
       token: TEST_DATA.token,
       walletAddress: TEST_DATA.wallet.address,

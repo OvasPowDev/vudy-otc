@@ -77,3 +77,8 @@ Preferred communication style: Simple, everyday language.
 - ✅ Removed separate Liquidator/Requester views - unified view shows all transactions
 - ✅ Maintained existing Kanban column structure (pending, offer_made, escrow_created)
 - ✅ Full i18n support for all filter UI elements
+
+### Bug Fixes
+- ✅ Fixed transaction creation error: `amountValue` now correctly sent as string instead of number
+- ✅ Transactions now properly saved to database after creation
+- ✅ Dashboard correctly displays created transactions after submission
