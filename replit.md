@@ -30,12 +30,22 @@ The platform is built as a full-stack TypeScript application using React + Vite 
 ### Auth UI Redesign - Fuse Style (Nov 05, 2025)
 - ✅ Updated Auth.tsx with modern "Fuse" split-screen design
 - ✅ Left panel: Clean card with rounded corners (rounded-2xl), shadow, and form
-- ✅ Right panel: Teal gradient background with welcome message and online operators
+- ✅ Right panel: Primary brand color (#0B3039) background with welcome message and online operators
 - ✅ Improved typography, spacing, and visual hierarchy
 - ✅ Added dev login button for easier testing (🔧 Dev: Login as Jose)
 - ✅ Maintained all OTP authentication flow functionality
 - ✅ Responsive design: right panel hidden on mobile, full card on desktop
 - ✅ Dark/light theme support preserved
+
+### Transaction Creation Fix (Nov 05, 2025)
+- ✅ Fixed transaction type enum from ["Buy", "Sell"] to ["buy", "sell"] for consistency with frontend
+- ✅ Synchronized database schema with db:push command
+- ✅ Added token selection field to CTF (Crypto to Fiat) form
+- ✅ Verified all required fields map correctly from form to backend (userId, type, code, direction, chain, token, amountValue, amountCurrency, bankAccountId, walletAddress, status)
+- ✅ Created test data for Jose user (profile, bank account, wallet)
+- ✅ Successfully tested FTC (Fiat to Crypto) transaction creation with type='buy'
+- ✅ Successfully tested CTF (Crypto to Fiat) transaction creation with type='sell'
+- ✅ All transactions properly created in 'pending' status
 
 ### Infrastructure & Backend
 - ✅ Converted Supabase schema to Drizzle ORM schema
