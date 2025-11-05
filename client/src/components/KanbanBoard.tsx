@@ -19,14 +19,15 @@ interface OTCRequest {
   amount: string;
   date: string;
   offers: number;
-  status: "pending" | "offer_made" | "escrow_created" | "completed";
+  status: "pending" | "escrow" | "completed" | "failed";
   escrowSubStatus?: "waiting_deposit" | "deposit_approval";
   dbId?: string;
   walletAddress?: string;
   chain?: string;
   acceptedByUserId?: string | null;
-  myColumn?: "pending" | "offer_made" | "escrow_created";
+  myColumn?: "pending" | "offered_by_me" | "escrow" | "completed";
   userId?: string;
+  winnerOtcId?: string | null;
 }
 
 const getTimeAgo = (dateString: string) => {
@@ -48,8 +49,9 @@ const getTimeAgo = (dateString: string) => {
 
 const getColumns = (t: (key: string) => string) => [
   { id: "pending", title: t('dashboard.pending'), color: "bg-slate-100 dark:bg-slate-800", icon: Clock },
-  { id: "offer_made", title: t('dashboard.offerMade'), color: "bg-blue-50 dark:bg-blue-950", icon: FileText },
-  { id: "escrow_created", title: t('dashboard.escrowCreated'), color: "bg-purple-50 dark:bg-purple-950", icon: Shield },
+  { id: "offered_by_me", title: "Con mi oferta", color: "bg-blue-50 dark:bg-blue-950", icon: FileText },
+  { id: "escrow", title: "Escrow creado", color: "bg-purple-50 dark:bg-purple-950", icon: Shield },
+  { id: "completed", title: "Completada", color: "bg-green-50 dark:bg-green-950", icon: Shield },
 ];
 
 function RequestCard({ request, columnColor, onOfferCreated }: { request: OTCRequest; columnColor: string; onOfferCreated: (requestId: string) => void }) {
@@ -239,20 +241,24 @@ export function KanbanBoard() {
     // Count offers for this transaction
     const transactionOffers = allOffers.filter((o: any) => o.transactionId === transaction.id);
     
-    // Determine myColumn based on transaction state
-    let myColumn: "pending" | "offer_made" | "escrow_created" | undefined;
+    // Determine myColumn based on transaction state and user relation
+    let myColumn: "pending" | "offered_by_me" | "escrow" | "completed" | undefined;
     
     // Check if user has made an offer for this transaction
-    const myOffer = transactionOffers.find((o: any) => o.userId === user?.id);
+    const myOffer = transactionOffers.find((o: any) => o.userId === user?.id && o.status === "open");
     
-    if (transaction.userId === user?.id) {
-      // User's own transactions - show based on transaction status
-      myColumn = transaction.status;
-    } else {
-      // Other users' transactions - show as liquidator view
+    // Simplified logic: map status directly to columns for now
+    if (transaction.status === "completed") {
+      myColumn = "completed";
+    } else if (transaction.status === "escrow") {
+      // Show in escrow only if user is the winner or owner
+      if (transaction.winnerOtcId === user?.id || transaction.userId === user?.id) {
+        myColumn = "escrow";
+      }
+    } else if (transaction.status === "pending") {
       if (myOffer) {
-        myColumn = "offer_made";
-      } else if (transaction.status === "pending") {
+        myColumn = "offered_by_me";
+      } else {
         myColumn = "pending";
       }
     }
@@ -271,6 +277,7 @@ export function KanbanBoard() {
       chain: transaction.chain,
       acceptedByUserId: transaction.acceptedByUserId,
       userId: transaction.userId,
+      winnerOtcId: transaction.winnerOtcId,
       myColumn,
     };
   };
@@ -283,8 +290,9 @@ export function KanbanBoard() {
   // Group by column
   const groupedRequests = {
     pending: filteredRequests.filter(r => r.myColumn === "pending"),
-    offer_made: filteredRequests.filter(r => r.myColumn === "offer_made"),
-    escrow_created: filteredRequests.filter(r => r.myColumn === "escrow_created"),
+    offered_by_me: filteredRequests.filter(r => r.myColumn === "offered_by_me"),
+    escrow: filteredRequests.filter(r => r.myColumn === "escrow"),
+    completed: filteredRequests.filter(r => r.myColumn === "completed"),
   };
 
   const handleOfferCreated = (requestId: string) => {

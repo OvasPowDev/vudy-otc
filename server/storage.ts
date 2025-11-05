@@ -47,8 +47,13 @@ export interface IStorage {
   deleteWallet(id: string): Promise<void>;
 
   // OTC Offers
+  getAllOffers(): Promise<OtcOffer[]>;
   getOffersForTransaction(transactionId: string): Promise<OtcOffer[]>;
+  getOffersByUserId(userId: string): Promise<OtcOffer[]>;
+  getOffer(id: string): Promise<OtcOffer | undefined>;
   createOtcOffer(data: InsertOtcOffer): Promise<OtcOffer>;
+  updateOfferStatus(id: string, status: "open" | "won" | "lost"): Promise<OtcOffer | undefined>;
+  updateMultipleOfferStatuses(transactionId: string, winnerId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -206,13 +211,42 @@ export class DbStorage implements IStorage {
     await db.delete(wallets).where(eq(wallets.id, id));
   }
 
+  async getAllOffers(): Promise<OtcOffer[]> {
+    return await db.select().from(otcOffers).orderBy(desc(otcOffers.createdAt));
+  }
+
   async getOffersForTransaction(transactionId: string): Promise<OtcOffer[]> {
-    return await db.select().from(otcOffers).where(eq(otcOffers.transactionId, transactionId));
+    return await db.select().from(otcOffers).where(eq(otcOffers.transactionId, transactionId)).orderBy(desc(otcOffers.createdAt));
+  }
+
+  async getOffersByUserId(userId: string): Promise<OtcOffer[]> {
+    return await db.select().from(otcOffers).where(eq(otcOffers.userId, userId)).orderBy(desc(otcOffers.createdAt));
+  }
+
+  async getOffer(id: string): Promise<OtcOffer | undefined> {
+    const result = await db.select().from(otcOffers).where(eq(otcOffers.id, id));
+    return result[0];
   }
 
   async createOtcOffer(data: InsertOtcOffer): Promise<OtcOffer> {
     const result = await db.insert(otcOffers).values(data).returning();
     return result[0];
+  }
+
+  async updateOfferStatus(id: string, status: "open" | "won" | "lost"): Promise<OtcOffer | undefined> {
+    const result = await db.update(otcOffers).set({ status }).where(eq(otcOffers.id, id)).returning();
+    return result[0];
+  }
+
+  async updateMultipleOfferStatuses(transactionId: string, winnerId: string): Promise<void> {
+    // Get all offers for this transaction
+    const offers = await this.getOffersForTransaction(transactionId);
+    
+    // Update each offer based on whether it's the winner
+    for (const offer of offers) {
+      const newStatus = offer.id === winnerId ? "won" : "lost";
+      await db.update(otcOffers).set({ status: newStatus }).where(eq(otcOffers.id, offer.id));
+    }
   }
 }
 

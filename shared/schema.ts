@@ -3,7 +3,8 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const transactionTypeEnum = pgEnum("transaction_type", ["buy", "sell"]);
-export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "offer_made", "escrow_created", "completed"]);
+export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "escrow", "completed", "failed"]);
+export const offerStatusEnum = pgEnum("offer_status", ["open", "won", "lost"]);
 
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -61,6 +62,8 @@ export const transactions = pgTable("transactions", {
   status: transactionStatusEnum("status").notNull().default("pending"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   acceptedByUserId: uuid("accepted_by_user_id"),
+  winnerOtcId: uuid("winner_otc_id"),
+  proofUploaded: boolean("proof_uploaded").default(false),
 });
 
 export const wallets = pgTable("wallets", {
@@ -84,7 +87,7 @@ export const otcOffers = pgTable("otc_offers", {
   walletId: uuid("wallet_id"),
   etaMinutes: integer("eta_minutes").notNull(),
   notes: text("notes"),
-  status: text("status").notNull().default("pending"),
+  status: offerStatusEnum("status").notNull().default("open"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

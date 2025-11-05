@@ -302,6 +302,121 @@ export function registerRoutes(app: Express) {
     return res.json(transaction);
   });
 
+  // OTC makes an offer on a transaction
+  app.post("/api/tx/:id/offer", async (req: Request, res: Response) => {
+    const transaction = await storage.getTransaction(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+    if (transaction.status !== "pending") {
+      return res.status(409).json({ error: "Transaction is not pending" });
+    }
+
+    // Create the offer - transactionId comes from URL, not body
+    const offerData = {
+      ...req.body,
+      transactionId: req.params.id,
+    };
+    const validated = insertOtcOfferSchema.parse(offerData);
+    const offer = await storage.createOtcOffer(validated);
+
+    // Broadcast offer created event to SSE clients
+    broadcast('offer.created', offer);
+
+    return res.json(offer);
+  });
+
+  // Client accepts an offer (transaction moves to escrow)
+  app.post("/api/tx/:id/accept", async (req: Request, res: Response) => {
+    const { offerId } = req.body;
+    if (!offerId) {
+      return res.status(400).json({ error: "offerId is required" });
+    }
+
+    const transaction = await storage.getTransaction(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+    if (transaction.status !== "pending") {
+      return res.status(409).json({ error: "Transaction is not pending" });
+    }
+
+    const offer = await storage.getOffer(offerId);
+    if (!offer || offer.transactionId !== req.params.id) {
+      return res.status(404).json({ error: "Offer not found for this transaction" });
+    }
+
+    // Update all offers for this transaction
+    await storage.updateMultipleOfferStatuses(req.params.id, offerId);
+
+    // Update transaction status to escrow and set winner
+    const updatedTx = await storage.updateTransaction(req.params.id, {
+      status: "escrow",
+      winnerOtcId: offer.userId,
+    });
+
+    // Broadcast transaction accepted event to SSE clients
+    broadcast('tx.accepted', {
+      txId: req.params.id,
+      winnerOtcId: offer.userId,
+    });
+
+    return res.json(updatedTx);
+  });
+
+  // OTC uploads proof (only for crypto_to_fiat)
+  app.post("/api/tx/:id/proof", async (req: Request, res: Response) => {
+    const { fileName, hash } = req.body;
+    if (!fileName || !hash) {
+      return res.status(400).json({ error: "fileName and hash are required" });
+    }
+
+    const transaction = await storage.getTransaction(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+    if (transaction.type !== "sell") {
+      return res.status(400).json({ error: "Proof upload only for crypto_to_fiat (sell) transactions" });
+    }
+    if (transaction.status !== "escrow") {
+      return res.status(409).json({ error: "Transaction must be in escrow status" });
+    }
+
+    // Mark proof as uploaded
+    await storage.updateTransaction(req.params.id, {
+      proofUploaded: true,
+    });
+
+    return res.json({ ok: true });
+  });
+
+  // Client validates and finalizes transaction
+  app.post("/api/tx/:id/validate", async (req: Request, res: Response) => {
+    const transaction = await storage.getTransaction(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+    if (transaction.status !== "escrow") {
+      return res.status(409).json({ error: "Transaction must be in escrow status" });
+    }
+
+    // For crypto_to_fiat, proof must be uploaded
+    if (transaction.type === "sell" && !transaction.proofUploaded) {
+      return res.status(409).json({ error: "Proof must be uploaded before validating" });
+    }
+
+    // Update transaction to completed
+    const completedTx = await storage.updateTransaction(req.params.id, {
+      status: "completed",
+      completedAt: new Date(),
+    });
+
+    // Broadcast transaction completed event to SSE clients
+    broadcast('tx.completed', { txId: req.params.id });
+
+    return res.json(completedTx);
+  });
+
   // Wallets
   app.get("/api/wallets", async (req: Request, res: Response) => {
     const userId = req.query.userId as string;
@@ -321,6 +436,18 @@ export function registerRoutes(app: Express) {
   });
 
   // OTC Offers
+  app.get("/api/offers", async (req: Request, res: Response) => {
+    // Get all offers (can be filtered by userId if needed)
+    const userId = req.query.userId as string;
+    if (userId) {
+      const offers = await storage.getOffersByUserId(userId);
+      return res.json(offers);
+    }
+    // Return all offers when no filter is provided
+    const offers = await storage.getAllOffers();
+    return res.json(offers);
+  });
+
   app.get("/api/offers/transaction/:transactionId", async (req: Request, res: Response) => {
     const offers = await storage.getOffersForTransaction(req.params.transactionId);
     return res.json(offers);

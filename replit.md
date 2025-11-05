@@ -96,3 +96,32 @@ Preferred communication style: Simple, everyday language.
 - ✅ **No refresh needed**: New/updated transactions appear instantly in Kanban
 - ✅ **Filter-aware**: Only shows transactions matching current type/date filters
 - ✅ **Performance**: EventSource auto-reconnects, no external dependencies
+
+### Multi-User OTC System with Offers & Escrow (November 05, 2025)
+- ✅ **Database Schema Updates**:
+  - Updated transaction statuses: `pending` → `escrow` → `completed` | `failed`
+  - Added `winnerOtcId` field to transactions
+  - Added `proofUploaded` boolean for crypto_to_fiat transactions
+  - Updated offers table with status enum: `open` | `won` | `lost`
+
+- ✅ **Backend API Endpoints**:
+  - `POST /api/tx/:id/offer` - OTC makes offer on pending transaction
+  - `POST /api/tx/:id/accept` - Client accepts offer (moves to escrow)
+  - `POST /api/tx/:id/proof` - OTC uploads proof (CTF only)
+  - `POST /api/tx/:id/validate` - Client validates and completes transaction
+
+- ✅ **SSE Events Extended**:
+  - `offer.created` - Broadcast when new offer is made
+  - `tx.accepted` - Broadcast when client accepts offer
+  - `tx.completed` - Broadcast when transaction is finalized
+
+- ✅ **Frontend Kanban 4-Column System**:
+  - **Pendientes**: Transactions waiting for offers
+  - **Con mi oferta**: Transactions where user has made an offer
+  - **Escrow creado**: Transactions in escrow (winner OTC or client view)
+  - **Completada**: Finalized transactions
+
+- ✅ **Storage Layer**:
+  - Methods for creating/updating/querying offers
+  - Multi-offer status updates (win/loss logic)
+  - Transaction escrow workflow support
