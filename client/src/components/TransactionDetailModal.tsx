@@ -88,12 +88,6 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
     enabled: !!transactionId && open,
   });
 
-  // Fetch bank accounts to show bank names in offers
-  const { data: bankAccounts = [] } = useQuery<any[]>({
-    queryKey: ['/api/bank-accounts'],
-    enabled: open && offers.some((o: any) => o.bankAccountId),
-  });
-
   if (!transactionId) {
     return null;
   }
@@ -182,44 +176,16 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
                 <CardContent>
                   <div className="space-y-3">
                     {offers.map((offer: any) => {
-                      const bankAccount = bankAccounts.find((b: any) => b.id === offer.bankAccountId);
                       const timeToOffer = getTimeElapsed(transaction.createdAt, offer.createdAt);
                       const offerAge = getTimeElapsed(offer.createdAt);
                       
                       return (
-                        <div key={offer.id} className="p-4 bg-muted rounded-lg space-y-3">
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            {bankAccount && (
-                              <div className="col-span-2">
-                                <p className="text-xs text-muted-foreground">Cuenta desde donde se enviará</p>
-                                <p className="font-medium">{bankAccount.bankName} - {bankAccount.accountNumber} ({bankAccount.currency})</p>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-xs text-muted-foreground">Monto ofrecido</p>
-                              <p className="font-medium">{formatAmount(parseFloat(offer.amountValue), offer.amountCurrency)}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Tiempo de transacción</p>
-                              <p className="font-medium">{offer.etaMinutes} minutos</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Tiempo hasta oferta</p>
-                              <p className="font-medium">{timeToOffer}</p>
-                              <p className="text-xs text-muted-foreground">Desde creación de transacción</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Oferta hecha hace</p>
-                              <p className="font-medium">{offerAge}</p>
-                            </div>
-                            {offer.notes && (
-                              <div className="col-span-2">
-                                <p className="text-xs text-muted-foreground">Notas</p>
-                                <p className="text-xs">{offer.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        <OfferDetail 
+                          key={offer.id} 
+                          offer={offer} 
+                          timeToOffer={timeToOffer}
+                          offerAge={offerAge}
+                        />
                       );
                     })}
                   </div>
@@ -236,5 +202,49 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OfferDetail({ offer, timeToOffer, offerAge }: { offer: any; timeToOffer: string; offerAge: string }) {
+  // Fetch bank account if offer has bankAccountId
+  const { data: bankAccount } = useQuery<any>({
+    queryKey: [`/api/bank-accounts/${offer.bankAccountId}`],
+    enabled: !!offer.bankAccountId,
+  });
+
+  return (
+    <div className="p-4 bg-muted rounded-lg space-y-3">
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        {bankAccount && (
+          <div className="col-span-2">
+            <p className="text-xs text-muted-foreground">Tu cuenta para recibir el pago</p>
+            <p className="font-medium">{bankAccount.bankName} - {bankAccount.accountNumber} ({bankAccount.currency})</p>
+          </div>
+        )}
+        <div>
+          <p className="text-xs text-muted-foreground">Monto ofrecido</p>
+          <p className="font-medium">{formatAmount(parseFloat(offer.amountValue), offer.amountCurrency)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Tiempo de transacción</p>
+          <p className="font-medium">{offer.etaMinutes} minutos</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Tiempo hasta oferta</p>
+          <p className="font-medium">{timeToOffer}</p>
+          <p className="text-xs text-muted-foreground">Desde creación de transacción</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Oferta hecha hace</p>
+          <p className="font-medium">{offerAge}</p>
+        </div>
+        {offer.notes && (
+          <div className="col-span-2">
+            <p className="text-xs text-muted-foreground">Notas</p>
+            <p className="text-xs">{offer.notes}</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

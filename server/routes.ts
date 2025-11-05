@@ -229,6 +229,14 @@ export function registerRoutes(app: Express) {
     return res.json(accounts);
   });
 
+  app.get("/api/bank-accounts/:id", async (req: Request, res: Response) => {
+    const account = await storage.getBankAccount(req.params.id);
+    if (!account) {
+      return res.status(404).json({ error: "Bank account not found" });
+    }
+    return res.json(account);
+  });
+
   app.post("/api/bank-accounts", async (req: Request, res: Response) => {
     const validated = insertBankAccountSchema.parse(req.body);
     const account = await storage.createBankAccount(validated);

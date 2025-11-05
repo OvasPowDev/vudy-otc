@@ -84,12 +84,14 @@ Preferred communication style: Simple, everyday language.
 - ✅ **Title Update**: Changed from "Información de la Transacción" to "Transacción FTC/CTF - [Código]"
 - ✅ **Offers Section**: Renamed to "Tu oferta" (singular)
 - ✅ **Enhanced Offer Details**: 
-  - Shows bank account information (name and account number) for FTC offers
+  - Shows **"Tu cuenta para recibir el pago"**: Bank account information (name, account number, and currency) for FTC offers
   - Displays "Monto ofrecido" with currency
   - Shows "Tiempo de transacción" (ETA in minutes)
   - **Time Tracking**: Calculates and displays time elapsed from transaction creation to offer submission
   - **Offer Age**: Shows how long ago the offer was made (format: Xd Xh Xm)
   - Improved layout with better information hierarchy
+- ✅ **Backend Enhancement**: Added `/api/bank-accounts/:id` endpoint to fetch individual bank accounts
+- ✅ **Frontend Optimization**: Created `OfferDetail` component with individual bank account queries for better performance
 
 ### Dashboard Translation Fixes
 - ✅ Fixed missing translations for dashboard statistics cards (totalTransactions, buyOrders, sellOrders, totalProcessed)
