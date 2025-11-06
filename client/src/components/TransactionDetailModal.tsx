@@ -76,6 +76,17 @@ const getTimeElapsed = (fromDate: string, toDate?: string): string => {
 
 export function TransactionDetailModal({ open, onOpenChange, transactionId }: TransactionDetailModalProps) {
   const { t } = useLanguage();
+  
+  // Get current user from auth context
+  const currentUserEmail = localStorage.getItem('userEmail');
+  
+  // Fetch current user profile to get userId
+  const { data: currentUserProfiles } = useQuery<any[]>({
+    queryKey: ['/api/profiles'],
+    enabled: !!currentUserEmail && open,
+  });
+  
+  const currentUserId = currentUserProfiles?.find((p: any) => p.email === currentUserEmail)?.id;
 
   // Fetch transaction data
   const { data: transaction, isLoading, error } = useQuery<any>({
@@ -216,13 +227,16 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
             {offers.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Tu oferta</CardTitle>
+                  <CardTitle className="text-base">
+                    {currentUserId === transaction.userId ? 'Ofertas recibidas' : 'Tu oferta'}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {offers.map((offer: any) => {
                       const timeToOffer = getTimeElapsed(transaction.createdAt, offer.createdAt);
                       const offerAge = getTimeElapsed(offer.createdAt);
+                      const isRequester = currentUserId === transaction.userId;
                       
                       return (
                         <OfferDetail 
@@ -232,6 +246,7 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
                           offerAge={offerAge}
                           transaction={transaction}
                           onOfferAccepted={() => onOpenChange(false)}
+                          isRequester={isRequester}
                         />
                       );
                     })}
@@ -252,12 +267,13 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
   );
 }
 
-function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepted }: { 
+function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepted, isRequester }: { 
   offer: any; 
   timeToOffer: string; 
   offerAge: string; 
   transaction: any;
   onOfferAccepted: () => void;
+  isRequester: boolean;
 }) {
   // Fetch bank account if offer has bankAccountId
   const { data: bankAccount } = useQuery<any>({
@@ -283,8 +299,11 @@ function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepte
     },
   });
 
-  // Show accept button only if transaction is in "offer_made" status
-  const canAcceptOffer = transaction.status === "offer_made" && offer.status === "open";
+  // Show accept button only if:
+  // 1. User is the requester (transaction owner)
+  // 2. Transaction is in "offer_made" status
+  // 3. Offer is "open"
+  const canAcceptOffer = isRequester && transaction.status === "offer_made" && offer.status === "open";
 
   return (
     <div className="p-4 bg-muted rounded-lg space-y-3">
