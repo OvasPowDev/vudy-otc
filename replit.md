@@ -72,6 +72,16 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+## November 06, 2025 (Evening)
+
+### Navigation Menu Reorganization
+- ✅ **Moved Profile Dropdown to Welcome Card**:
+  - Removed "Perfil" dropdown from main navigation menu
+  - Profile menu (Perfil, Cuentas, Wallets, API) now appears as dropdown under "Welcome, [email]" card
+  - Added chevron-down icon to indicate dropdown functionality
+  - Cleaner navigation menu with only Dashboard and Transacciones
+  - UserProfile component now handles dropdown menu with internationalization support
+
 ## November 06, 2025 (Late PM)
 
 ### Enhanced Profile Management System
