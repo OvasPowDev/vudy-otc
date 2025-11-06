@@ -299,11 +299,9 @@ function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepte
     },
   });
 
-  // Show accept button only if:
-  // 1. User is the requester (transaction owner)
-  // 2. Transaction is in "offer_made" status
-  // 3. Offer is "open"
-  const canAcceptOffer = isRequester && transaction.status === "offer_made" && offer.status === "open";
+  // Show accept button if transaction is in "offer_made" status and offer is "open"
+  // TODO: Later add role verification to only show for requesters
+  const canAcceptOffer = transaction.status === "offer_made" && offer.status === "open";
 
   return (
     <div className="p-4 bg-muted rounded-lg space-y-3">
