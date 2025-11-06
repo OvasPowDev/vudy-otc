@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Trash2, Key, Clock, Calendar } from "lucide-react";
+import { Plus, Trash2, Key, Clock, Calendar, BookOpen, Code } from "lucide-react";
 import { format } from "date-fns";
 import { CreateApiKeyDialog } from "@/components/CreateApiKeyDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -73,31 +74,40 @@ export default function ApiSettings() {
     <Layout>
       <div className="container mx-auto py-8 max-w-6xl">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold" data-testid="text-page-title">
-                {t('apiSettings.title')}
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                {t('apiSettings.description')}
-              </p>
-            </div>
-            <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-api-key">
-              <Plus className="mr-2 h-4 w-4" />
-              {t('apiSettings.createKey')}
-            </Button>
-          </div>
+          <h1 className="text-3xl font-bold mb-2" data-testid="text-page-title">
+            {t('apiSettings.title')}
+          </h1>
+          <p className="text-muted-foreground">
+            {t('apiSettings.description')}
+          </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
+        <Tabs defaultValue="keys" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="keys" className="gap-2">
+              <Key className="h-4 w-4" />
               {t('apiSettings.apiKeys')}
-            </CardTitle>
-            <CardDescription>{t('apiSettings.apiKeysDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent>
+            </TabsTrigger>
+            <TabsTrigger value="docs" className="gap-2">
+              <BookOpen className="h-4 w-4" />
+              {t('apiSettings.documentation')}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="keys" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">{t('apiSettings.manageKeys')}</h2>
+                <p className="text-sm text-muted-foreground">{t('apiSettings.apiKeysDescription')}</p>
+              </div>
+              <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-api-key">
+                <Plus className="mr-2 h-4 w-4" />
+                {t('apiSettings.createKey')}
+              </Button>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 {t('common.loading')}...
@@ -172,22 +182,182 @@ export default function ApiSettings() {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>{t('apiSettings.documentation')}</CardTitle>
-            <CardDescription>{t('apiSettings.documentationDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline">
-              <a href="/api-docs" target="_blank" rel="noopener noreferrer" data-testid="link-api-docs">
-                {t('apiSettings.viewDocs')}
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
+          <TabsContent value="docs" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5" />
+                  API Documentation
+                </CardTitle>
+                <CardDescription>
+                  Integra transacciones externas mediante nuestra API REST
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Authentication */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Key className="h-4 w-4" />
+                    Autenticación
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Todas las peticiones requieren una API key en el header:
+                  </p>
+                  <div className="bg-muted p-4 rounded-lg">
+                    <code className="text-sm">
+                      x-api-key: vdy_your_api_key_here
+                    </code>
+                  </div>
+                </div>
+
+                {/* Endpoint */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Code className="h-4 w-4" />
+                    Crear Transacción Externa
+                  </h3>
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge>POST</Badge>
+                      <code className="text-sm">/api/external/transactions</code>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Request Body:</strong>
+                  </p>
+                  <div className="bg-muted p-4 rounded-lg overflow-x-auto">
+                    <pre className="text-xs">
+{`{
+  "type": "fiat_to_crypto" | "crypto_to_fiat",
+  "chain": "TRON" | "Ethereum" | "Polygon",
+  "token": "USDT" | "USDC",
+  "amountValue": "1000.00",
+  "amountCurrency": "USD",
+  "walletAddress": "0x...",
+  "bankAccountId": "bank-account-uuid",
+  "clientAlias": "Cliente ABC",
+  "clientKycUrl": "https://...",
+  "clientNotes": "Notas adicionales",
+  "requestOrigin": "api",
+  "slaMinutes": 30
+}`}
+                    </pre>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Campos:</strong>
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="grid grid-cols-3 gap-2 p-2 bg-muted/50 rounded">
+                      <span className="font-mono">type</span>
+                      <span className="text-muted-foreground">string</span>
+                      <span>Tipo de transacción</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 p-2">
+                      <span className="font-mono">chain</span>
+                      <span className="text-muted-foreground">string</span>
+                      <span>Blockchain (TRON, Ethereum, Polygon)</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 p-2 bg-muted/50 rounded">
+                      <span className="font-mono">token</span>
+                      <span className="text-muted-foreground">string</span>
+                      <span>Token (USDT, USDC)</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 p-2">
+                      <span className="font-mono">amountValue</span>
+                      <span className="text-muted-foreground">string</span>
+                      <span>Monto como string</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 p-2 bg-muted/50 rounded">
+                      <span className="font-mono">walletAddress</span>
+                      <span className="text-muted-foreground">string</span>
+                      <span>Dirección de wallet</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 p-2">
+                      <span className="font-mono">clientAlias</span>
+                      <span className="text-muted-foreground">string</span>
+                      <span>Nombre/alias del cliente</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 p-2 bg-muted/50 rounded">
+                      <span className="font-mono">clientKycUrl</span>
+                      <span className="text-muted-foreground">string</span>
+                      <span>URL del KYC del cliente</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 p-2">
+                      <span className="font-mono">slaMinutes</span>
+                      <span className="text-muted-foreground">number</span>
+                      <span>SLA en minutos (opcional)</span>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground mt-4">
+                    <strong>Response (201):</strong>
+                  </p>
+                  <div className="bg-muted p-4 rounded-lg overflow-x-auto">
+                    <pre className="text-xs">
+{`{
+  "id": "uuid",
+  "code": "TXN-12345",
+  "type": "buy",
+  "status": "pending",
+  "amountValue": "1000.00",
+  "createdAt": "2025-11-06T00:00:00Z",
+  ...
+}`}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Example with cURL */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold">Ejemplo con cURL</h3>
+                  <div className="bg-muted p-4 rounded-lg overflow-x-auto">
+                    <pre className="text-xs">
+{`curl -X POST https://vudy-otc.replit.app/api/external/transactions \\
+  -H "x-api-key: vdy_your_api_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "fiat_to_crypto",
+    "chain": "TRON",
+    "token": "USDT",
+    "amountValue": "1000.00",
+    "amountCurrency": "USD",
+    "walletAddress": "TXabc123...",
+    "bankAccountId": "uuid-here",
+    "clientAlias": "Cliente ABC",
+    "requestOrigin": "api"
+  }'`}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Error Codes */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold">Códigos de Error</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-3 p-2 bg-muted/50 rounded">
+                      <Badge variant="destructive">401</Badge>
+                      <span>API key inválida o faltante</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-2">
+                      <Badge variant="destructive">400</Badge>
+                      <span>Datos de petición inválidos</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-2 bg-muted/50 rounded">
+                      <Badge variant="destructive">500</Badge>
+                      <span>Error interno del servidor</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <CreateApiKeyDialog 
