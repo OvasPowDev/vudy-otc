@@ -61,16 +61,21 @@ Preferred communication style: Simple, everyday language.
 
 ## November 05, 2025 (PM)
 
-### Menu Internationalization
-- ✅ **Updated Layout Component**:
-  - Added useLanguage hook to Layout component
-  - All menu items now use i18n translations (t('menu.*'))
-  - Menu items properly translated in Spanish and English
+### Menu Reorganization & Internationalization
+- ✅ **Layout Restructure**:
+  - Moved profile dropdown menu next to "VUDY OTC" logo (left side of header)
+  - Changed dropdown alignment from "end" to "start" for better UX
+  - Menu now appears directly beside the welcome text
   
-- ✅ **Translation Updates**:
-  - Added `menu.apiSettings` translation: "Configuración de API" (ES) / "API Settings" (EN)
-  - Updated menu items: profile, apiSettings, signOut with proper translations
-  - Added data-testid attributes for better testing: menu-profile, menu-api-settings, menu-sign-out
+- ✅ **Simplified Menu Labels**:
+  - Changed "Configuración de API" to simply "API" for cleaner look
+  - Added `menu.api` translation: "API" (ES) / "API" (EN)
+  - Menu items: Perfil, API, Cerrar sesión (ES) / Profile, API, Sign Out (EN)
+  
+- ✅ **Full i18n Support**:
+  - All menu items use i18n translations (t('menu.*'))
+  - Properly translated in Spanish and English
+  - Added data-testid attributes: menu-profile, menu-api, menu-sign-out
 
 ### API Keys & External Integration System
 - ✅ **Database Schema Updates**:
