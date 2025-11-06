@@ -59,6 +59,28 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+## November 06, 2025 (Early AM)
+
+### Routes Reorganization for Direct Login Access
+- ✅ **Route Structure Updated**:
+  - Changed root route "/" to point to Auth page (login)
+  - Moved Index (dashboard) to "/dashboard" route
+  - All navigation and redirects updated throughout the app
+  
+- ✅ **Navigation Updates**:
+  - Auth page: After successful login, navigates to "/dashboard"
+  - Index/Dashboard: If no user, redirects to "/" (login)
+  - Layout logo link: Updated to point to "/dashboard"
+  - AppSidebar: Dashboard menu item updated to "/dashboard"
+  - CreateTransactionDialog: Redirects to "/dashboard" after creation
+  - All protected pages: Redirect to "/" if no user authenticated
+  
+- ✅ **Benefits**:
+  - Direct access to https://vudy-otc.replit.app now shows login page immediately
+  - No intermediate redirects or JavaScript required
+  - Better UX for users accessing the app
+  - Cleaner URL structure
+
 ## November 05, 2025 (PM)
 
 ### Menu Reorganization & Internationalization

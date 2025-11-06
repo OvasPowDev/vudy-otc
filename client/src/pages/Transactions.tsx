@@ -12,10 +12,10 @@ export default function Transactions() {
   const { user } = useAuth();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  // Redirect to auth if no user
+  // Redirect to login if no user
   useEffect(() => {
     if (!user) {
-      navigate("/auth");
+      navigate("/");
     }
   }, [user, navigate]);
 

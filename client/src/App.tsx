@@ -22,8 +22,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<Auth />} />
+            <Route path="/dashboard" element={<Index />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/accounts" element={<BankAccounts />} />
             <Route path="/wallets" element={<Wallets />} />

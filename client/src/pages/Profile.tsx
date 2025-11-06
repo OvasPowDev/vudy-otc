@@ -85,7 +85,7 @@ const Profile = () => {
   };
 
   if (!user) {
-    navigate("/auth");
+    navigate("/");
     return null;
   }
 

@@ -14,7 +14,7 @@ import {
 import { authManager } from "@/lib/auth";
 
 const menuItems = [
-  { title: "Dashboard", url: "/", icon: Home },
+  { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Transactions", url: "/transactions", icon: FileText },
   { title: "Profile", url: "/profile", icon: Settings },
   { title: "Bank Accounts", url: "/bank-accounts", icon: CreditCard },
@@ -27,7 +27,7 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     await authManager.signOut();
-    navigate("/auth");
+    navigate("/");
   };
 
   return (

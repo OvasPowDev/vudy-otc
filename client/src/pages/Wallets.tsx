@@ -137,7 +137,7 @@ const Wallets = () => {
   };
 
   if (!user) {
-    navigate("/auth");
+    navigate("/");
     return null;
   }
 

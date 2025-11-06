@@ -154,7 +154,7 @@ const BankAccounts = () => {
   };
 
   if (!user) {
-    navigate("/auth");
+    navigate("/");
     return null;
   }
 

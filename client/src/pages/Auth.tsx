@@ -70,7 +70,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [user, navigate]);
 
@@ -199,7 +199,7 @@ const Auth = () => {
           const profile = await profileResponse.json();
           login({ email: profile.email, id: profile.id, firstName: profile.firstName, lastName: profile.lastName });
           toast.success('Acceso directo habilitado');
-          navigate("/");
+          navigate("/dashboard");
         } else {
           toast.error('Error al crear perfil de desarrollo');
         }
@@ -340,7 +340,7 @@ const Auth = () => {
       });
 
       toast.success('¡Autenticación exitosa!');
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.error("❌ Exception during OTP verification:", error);
       toast.error('Ocurrió un problema al verificar el código');

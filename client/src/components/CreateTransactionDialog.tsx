@@ -72,7 +72,7 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
       }
       handleClose();
       // Redirigir al dashboard después de crear la transacción
-      navigate('/');
+      navigate('/dashboard');
     },
     onError: (error: any) => {
       console.error('Error creating transaction:', error);
