@@ -239,13 +239,18 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Profile not found" });
       }
 
-      // For now, since we don't have password authentication yet,
-      // we'll just update the password hash
-      // In a real implementation, you'd verify currentPassword against stored hash
-      
       const bcrypt = await import('bcrypt');
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
       
+      // Verify current password if one exists
+      if (profile.passwordHash) {
+        const isValid = await bcrypt.compare(currentPassword, profile.passwordHash);
+        if (!isValid) {
+          return res.status(400).json({ error: "Current password is incorrect" });
+        }
+      }
+      
+      // Hash and save new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
       await storage.updateProfile(req.params.id, { passwordHash: hashedPassword });
       
       return res.json({ success: true, message: "Password updated successfully" });

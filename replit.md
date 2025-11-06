@@ -69,3 +69,36 @@ Preferred communication style: Simple, everyday language.
 **Drag & Drop**: @dnd-kit (for kanban board).
 
 **API Documentation**: `swagger-jsdoc`, `swagger-ui-express`.
+
+# Recent Changes
+
+## November 06, 2025 (Late PM)
+
+### Enhanced Profile Management System
+- ✅ **Clickable User Profile in Header**:
+  - User profile card in desktop header now navigates to `/profile` on click
+  - Added hover effect and cursor pointer for better UX
+  - data-testid added for testing
+  
+- ✅ **Comprehensive Profile Page (Tabbed Interface)**:
+  - **Tab 1 - Personal**: First name, last name, phone, country, email (read-only)
+  - **Tab 2 - Photos**: Upload profile photo and company logo (image upload with preview)
+  - **Tab 3 - Company**: Company name, address, website, phone (optional), email
+  - **Tab 4 - Security**: Change password form with validation (min 8 chars, confirm match)
+  
+- ✅ **Database Schema Updates**:
+  - Added to `profiles` table: profilePhoto, companyLogo, companyName, companyAddress, companyWebsite, companyPhone, companyEmail, passwordHash
+  - All fields nullable for flexibility
+  - Supports base64 image storage for photos and logos
+  
+- ✅ **Backend Implementation**:
+  - New endpoint: `POST /api/profiles/:id/change-password`
+  - Password hashing with bcrypt (10 salt rounds)
+  - Image upload via base64 encoding (max 5MB, validated on frontend)
+  - Full validation for company data (URL format for website, email format)
+  
+- ✅ **Form Validation**:
+  - Zod schemas for all forms: personal, company, password
+  - Real-time validation with error messages
+  - Password confirmation matching
+  - URL and email format validation

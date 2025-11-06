@@ -32,11 +32,12 @@ const Profile = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [countryCode, setCountryCode] = useState("+54");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string>("");
   const [companyLogoPreview, setCompanyLogoPreview] = useState<string>("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [countryCode, setCountryCode] = useState("+54");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const companyLogoInputRef = useRef<HTMLInputElement>(null);
 
@@ -176,35 +177,20 @@ const Profile = () => {
 
   const handleProfileUpdate = async (data: any) => {
     if (!user) return;
-    setLoading(true);
-    try {
-      await updateProfileMutation.mutateAsync(data);
-    } finally {
-      setLoading(false);
-    }
+    await updateProfileMutation.mutateAsync(data);
   };
 
   const handleCompanyUpdate = async (data: any) => {
     if (!user) return;
-    setLoading(true);
-    try {
-      await updateProfileMutation.mutateAsync(data);
-    } finally {
-      setLoading(false);
-    }
+    await updateProfileMutation.mutateAsync(data);
   };
 
   const handlePasswordChange = async (data: any) => {
     if (!user) return;
-    setLoading(true);
-    try {
-      await changePasswordMutation.mutateAsync({
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-      });
-    } finally {
-      setLoading(false);
-    }
+    await changePasswordMutation.mutateAsync({
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+    });
   };
 
   const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,28 +209,27 @@ const Profile = () => {
       return;
     }
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setProfilePhotoPreview(base64String);
-    };
-    reader.readAsDataURL(file);
-
-    // Upload to server
-    setLoading(true);
+    setUploadingPhoto(true);
     try {
-      const reader2 = new FileReader();
-      reader2.onloadend = async () => {
-        const base64String = reader2.result as string;
-        await updateProfileMutation.mutateAsync({ profilePhoto: base64String });
-        toast.success("Foto de perfil actualizada");
-      };
-      reader2.readAsDataURL(file);
+      // Read file as base64
+      const base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Set preview immediately
+      setProfilePhotoPreview(base64String);
+      
+      // Upload to server
+      await updateProfileMutation.mutateAsync({ profilePhoto: base64String });
+      toast.success("Foto de perfil actualizada");
     } catch (error: any) {
       toast.error("Error al subir la foto: " + error.message);
+      setProfilePhotoPreview(""); // Reset preview on error
     } finally {
-      setLoading(false);
+      setUploadingPhoto(false);
     }
   };
 
@@ -264,37 +249,37 @@ const Profile = () => {
       return;
     }
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setCompanyLogoPreview(base64String);
-    };
-    reader.readAsDataURL(file);
-
-    // Upload to server
-    setLoading(true);
+    setUploadingLogo(true);
     try {
-      const reader2 = new FileReader();
-      reader2.onloadend = async () => {
-        const base64String = reader2.result as string;
-        await updateProfileMutation.mutateAsync({ companyLogo: base64String });
-        toast.success("Logo de empresa actualizado");
-      };
-      reader2.readAsDataURL(file);
+      // Read file as base64
+      const base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Set preview immediately
+      setCompanyLogoPreview(base64String);
+      
+      // Upload to server
+      await updateProfileMutation.mutateAsync({ companyLogo: base64String });
+      toast.success("Logo de empresa actualizado");
     } catch (error: any) {
       toast.error("Error al subir el logo: " + error.message);
+      setCompanyLogoPreview(""); // Reset preview on error
     } finally {
-      setLoading(false);
+      setUploadingLogo(false);
     }
   };
 
-  if (!user) {
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
-  if (profileLoading) {
+  if (!user || profileLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -419,8 +404,8 @@ const Profile = () => {
                         </p>
                       </div>
 
-                      <Button type="submit" disabled={loading} data-testid="button-save-personal">
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Button type="submit" disabled={updateProfileMutation.isPending} data-testid="button-save-personal">
+                        {updateProfileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Guardar Cambios
                       </Button>
                     </form>
@@ -461,10 +446,11 @@ const Profile = () => {
                         type="button"
                         variant="outline"
                         onClick={() => profilePhotoInputRef.current?.click()}
-                        disabled={loading}
+                        disabled={uploadingPhoto}
                         data-testid="button-upload-profile-photo"
                       >
-                        <Upload className="h-4 w-4 mr-2" />
+                        {uploadingPhoto && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        {!uploadingPhoto && <Upload className="h-4 w-4 mr-2" />}
                         Subir Foto
                       </Button>
                       <p className="text-xs text-muted-foreground text-center">
@@ -501,10 +487,11 @@ const Profile = () => {
                         type="button"
                         variant="outline"
                         onClick={() => companyLogoInputRef.current?.click()}
-                        disabled={loading}
+                        disabled={uploadingLogo}
                         data-testid="button-upload-company-logo"
                       >
-                        <Upload className="h-4 w-4 mr-2" />
+                        {uploadingLogo && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        {!uploadingLogo && <Upload className="h-4 w-4 mr-2" />}
                         Subir Logo
                       </Button>
                       <p className="text-xs text-muted-foreground text-center">
@@ -598,8 +585,8 @@ const Profile = () => {
                         )}
                       />
 
-                      <Button type="submit" disabled={loading} data-testid="button-save-company">
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Button type="submit" disabled={updateProfileMutation.isPending} data-testid="button-save-company">
+                        {updateProfileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Guardar Datos de Empresa
                       </Button>
                     </form>
@@ -663,8 +650,8 @@ const Profile = () => {
                         )}
                       />
 
-                      <Button type="submit" disabled={loading} data-testid="button-change-password">
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Button type="submit" disabled={changePasswordMutation.isPending} data-testid="button-change-password">
+                        {changePasswordMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Cambiar Contraseña
                       </Button>
                     </form>
