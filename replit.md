@@ -136,3 +136,35 @@ Preferred communication style: Simple, everyday language.
   - Icons sized appropriately (h-5 w-5 on mobile, h-6 w-6 on desktop)
   - Compact vertical spacing with `leading-tight` for better density
   - Responsive title sizing (text-xs sm:text-sm)
+
+## November 06, 2025 (Night)
+
+### Offer Acceptance Workflow Implementation
+- ✅ **Backend Offer Acceptance System**:
+  - New storage method: `acceptOffer(offerId)` - securely accepts offers by deriving transactionId from the offer itself
+  - Security hardened: Removed transactionId parameter to prevent cross-transaction tampering
+  - Automatic status updates: Transaction moves to "escrow", winning offer marked "won", all other offers marked "lost"
+  - Notification system: Automatic notifications sent to users whose offers were rejected
+  
+- ✅ **API Endpoint**:
+  - New endpoint: `POST /api/offers/:offerId/accept`
+  - Only requires offerId in URL (no body required)
+  - Full validation and error handling
+  
+- ✅ **Frontend Offer Acceptance UI**:
+  - "Aceptar Oferta" button added to TransactionDetailModal
+  - Button only appears when transaction status is "offer_made" and offer status is "open"
+  - TanStack Query mutation with proper loading states
+  - Success toast notification on acceptance
+  - Automatic cache invalidation for transactions and offers
+  
+- ✅ **Notification System for Rejected Offers**:
+  - Storage method: `createNotification(userId, type, message, transactionId?)` 
+  - Notifications of type "offer_rejected" automatically sent to losing bidders
+  - Integrated with existing notification infrastructure
+  
+- ✅ **Security & Integrity**:
+  - Transaction ID derived exclusively from the offer record (not client input)
+  - Interface-level protection: IStorage.acceptOffer signature prevents transactionId injection
+  - Prevents cross-transaction offer acceptance vulnerability
+  - No race conditions or tampering vectors under current implementation
