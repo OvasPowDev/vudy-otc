@@ -42,6 +42,12 @@ export interface IStorage {
   getTransaction(id: string): Promise<Transaction | undefined>;
   createTransaction(data: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, data: Partial<InsertTransaction>): Promise<Transaction | undefined>;
+  getUserStatistics(userId: string): Promise<{
+    totalTransactions: number;
+    buyOrders: number;
+    sellOrders: number;
+    totalProcessed: number;
+  }>;
 
   // Wallets
   getWallets(userId: string): Promise<Wallet[]>;
@@ -206,6 +212,41 @@ export class DbStorage implements IStorage {
   async updateTransaction(id: string, data: Partial<InsertTransaction>): Promise<Transaction | undefined> {
     const result = await db.update(transactions).set(data).where(eq(transactions.id, id)).returning();
     return result[0];
+  }
+
+  async getUserStatistics(userId: string): Promise<{
+    totalTransactions: number;
+    buyOrders: number;
+    sellOrders: number;
+    totalProcessed: number;
+  }> {
+    const userOffers = await db
+      .select({ transactionId: otcOffers.transactionId })
+      .from(otcOffers)
+      .where(eq(otcOffers.userId, userId));
+    
+    const uniqueTransactionIds = new Set(userOffers.map(o => o.transactionId));
+    const totalTransactions = uniqueTransactionIds.size;
+
+    const wonTransactions = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.winnerOtcId, userId));
+
+    const buyOrders = wonTransactions.filter(t => t.type === 'buy').length;
+    const sellOrders = wonTransactions.filter(t => t.type === 'sell').length;
+
+    const completedTransactions = wonTransactions.filter(t => t.status === 'completed');
+    const totalProcessed = completedTransactions.reduce((sum, t) => {
+      return sum + parseFloat(t.amountValue?.toString() || '0');
+    }, 0);
+
+    return {
+      totalTransactions,
+      buyOrders,
+      sellOrders,
+      totalProcessed
+    };
   }
 
   async getWallets(userId: string): Promise<Wallet[]> {

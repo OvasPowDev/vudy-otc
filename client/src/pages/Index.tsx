@@ -22,17 +22,21 @@ export default function Index() {
     }
   }, [user, navigate]);
 
-  // Fetch user's transactions
-  const { data: transactions = [] } = useQuery<any[]>({
-    queryKey: [`/api/transactions?userId=${user?.id}`],
+  // Fetch user statistics
+  const { data: statistics } = useQuery<{
+    totalTransactions: number;
+    buyOrders: number;
+    sellOrders: number;
+    totalProcessed: number;
+  }>({
+    queryKey: [`/api/user-statistics/${user?.id}`],
     enabled: !!user,
   });
 
-  // Calculate statistics
-  const buyOrders = transactions.filter(t => t.type?.toLowerCase() === 'buy').length;
-  const sellOrders = transactions.filter(t => t.type?.toLowerCase() === 'sell').length;
-  const completedTransactions = transactions.filter(t => t.status === 'completed');
-  const totalProcessed = completedTransactions.reduce((sum, t) => sum + (parseFloat(t.amountValue) || 0), 0);
+  const totalTransactions = statistics?.totalTransactions || 0;
+  const buyOrders = statistics?.buyOrders || 0;
+  const sellOrders = statistics?.sellOrders || 0;
+  const totalProcessed = statistics?.totalProcessed || 0;
 
   const handleTransactionCreated = () => {
     setCreateDialogOpen(false);
@@ -71,10 +75,10 @@ export default function Index() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-total-transactions">
-                  {transactions.length}
+                  {totalTransactions}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {completedTransactions.length} {t('dashboard.completedTransactions')}
+                  {t('dashboard.transactionsWithOffers')}
                 </p>
               </CardContent>
             </Card>

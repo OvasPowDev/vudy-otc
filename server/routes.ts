@@ -280,6 +280,12 @@ export function registerRoutes(app: Express) {
     return res.json(transactions);
   });
 
+  app.get("/api/user-statistics/:userId", async (req: Request, res: Response) => {
+    const userId = req.params.userId;
+    const statistics = await storage.getUserStatistics(userId);
+    return res.json(statistics);
+  });
+
   app.get("/api/transactions/:id", async (req: Request, res: Response) => {
     const transaction = await storage.getTransaction(req.params.id);
     if (!transaction) {
