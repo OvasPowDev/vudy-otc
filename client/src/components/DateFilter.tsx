@@ -31,7 +31,7 @@ interface DateFilterProps {
 
 export function DateFilter({ onFilterChange }: DateFilterProps) {
   const { t } = useLanguage();
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('last30');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('last7');
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
@@ -130,9 +130,9 @@ export function DateFilter({ onFilterChange }: DateFilterProps) {
 
   // Apply default filter on mount
   useEffect(() => {
-    const dateRange = getDateRange('last30');
+    const dateRange = getDateRange('last7');
     onFilterChange({
-      period: 'last30',
+      period: 'last7',
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
     });
