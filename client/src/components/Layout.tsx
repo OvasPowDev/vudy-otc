@@ -34,26 +34,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <User className="h-4 w-4" />
+                  <Button variant="ghost" className="h-auto px-2 py-1">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {user.firstName} {user.lastName}
+                      </span>
+                    </div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user.firstName} {user.lastName}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>{t('menu.profile')}</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/api-settings")} data-testid="menu-api">
                     <Key className="mr-2 h-4 w-4" />
                     <span>{t('menu.api')}</span>

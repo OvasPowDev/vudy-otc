@@ -63,19 +63,20 @@ Preferred communication style: Simple, everyday language.
 
 ### Menu Reorganization & Internationalization
 - ✅ **Layout Restructure**:
-  - Moved profile dropdown menu next to "VUDY OTC" logo (left side of header)
-  - Changed dropdown alignment from "end" to "start" for better UX
-  - Menu now appears directly beside the welcome text
+  - User name now acts as dropdown trigger (clickable welcome text)
+  - Dropdown menu positioned next to "VUDY OTC" logo (left side of header)
+  - Removed standalone profile icon button
+  - Menu appears directly beside the logo with user name visible
   
-- ✅ **Simplified Menu Labels**:
+- ✅ **Simplified Menu Structure**:
+  - Removed "Perfil" option from menu (direct access not needed)
+  - Menu now contains only: API and Cerrar sesión (Sign Out)
   - Changed "Configuración de API" to simply "API" for cleaner look
-  - Added `menu.api` translation: "API" (ES) / "API" (EN)
-  - Menu items: Perfil, API, Cerrar sesión (ES) / Profile, API, Sign Out (EN)
   
 - ✅ **Full i18n Support**:
   - All menu items use i18n translations (t('menu.*'))
-  - Properly translated in Spanish and English
-  - Added data-testid attributes: menu-profile, menu-api, menu-sign-out
+  - Menu items: API, Cerrar sesión (ES) / API, Sign Out (EN)
+  - Added data-testid attributes: menu-api, menu-sign-out
 
 ### API Keys & External Integration System
 - ✅ **Database Schema Updates**:
