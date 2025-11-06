@@ -2,12 +2,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 import { format, formatDistanceToNow, differenceInMinutes, differenceInHours, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface TransactionDetailModalProps {
   open: boolean;
@@ -229,6 +230,8 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
                           offer={offer} 
                           timeToOffer={timeToOffer}
                           offerAge={offerAge}
+                          transaction={transaction}
+                          onOfferAccepted={() => onOpenChange(false)}
                         />
                       );
                     })}
@@ -249,12 +252,39 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
   );
 }
 
-function OfferDetail({ offer, timeToOffer, offerAge }: { offer: any; timeToOffer: string; offerAge: string }) {
+function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepted }: { 
+  offer: any; 
+  timeToOffer: string; 
+  offerAge: string; 
+  transaction: any;
+  onOfferAccepted: () => void;
+}) {
   // Fetch bank account if offer has bankAccountId
   const { data: bankAccount } = useQuery<any>({
     queryKey: [`/api/bank-accounts/${offer.bankAccountId}`],
     enabled: !!offer.bankAccountId,
   });
+
+  const acceptOfferMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/offers/${offer.id}/accept`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      toast.success("¡Oferta aceptada! La transacción se movió a Escrow creado.");
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${transaction.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/offers/transaction/${transaction.id}`] });
+      onOfferAccepted();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Error al aceptar la oferta");
+    },
+  });
+
+  // Show accept button only if transaction is in "offer_made" status
+  const canAcceptOffer = transaction.status === "offer_made" && offer.status === "open";
 
   return (
     <div className="p-4 bg-muted rounded-lg space-y-3">
@@ -289,6 +319,29 @@ function OfferDetail({ offer, timeToOffer, offerAge }: { offer: any; timeToOffer
           </div>
         )}
       </div>
+
+      {canAcceptOffer && (
+        <div className="flex justify-end pt-2">
+          <Button 
+            onClick={() => acceptOfferMutation.mutate()}
+            disabled={acceptOfferMutation.isPending}
+            className="gap-2"
+            data-testid="button-accept-offer"
+          >
+            {acceptOfferMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Aceptando...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4" />
+                Aceptar Oferta
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -511,6 +511,17 @@ export function registerRoutes(app: Express) {
     return res.json(offer);
   });
 
+  app.post("/api/offers/:offerId/accept", async (req: Request, res: Response) => {
+    const { offerId } = req.params;
+
+    try {
+      await storage.acceptOffer(offerId);
+      return res.json({ success: true, message: "Offer accepted successfully" });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  });
+
   // API Keys Management
   app.get("/api/api-keys", async (req: Request, res: Response) => {
     const userId = req.query.userId as string;

@@ -28,6 +28,7 @@ export interface IStorage {
 
   // Notifications
   getNotifications(userId: string): Promise<Notification[]>;
+  createNotification(data: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
 
@@ -62,6 +63,7 @@ export interface IStorage {
   createOtcOffer(data: InsertOtcOffer): Promise<OtcOffer>;
   updateOfferStatus(id: string, status: "open" | "won" | "lost"): Promise<OtcOffer | undefined>;
   updateMultipleOfferStatuses(transactionId: string, winnerId: string): Promise<void>;
+  acceptOffer(offerId: string): Promise<void>;
 
   // API Keys
   getApiKeys(userId: string): Promise<ApiKey[]>;
@@ -118,6 +120,11 @@ export class DbStorage implements IStorage {
 
   async getNotifications(userId: string): Promise<Notification[]> {
     return await db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const result = await db.insert(notifications).values(data).returning();
+    return result[0];
   }
 
   async markNotificationAsRead(id: string): Promise<void> {
@@ -298,6 +305,70 @@ export class DbStorage implements IStorage {
       const newStatus = offer.id === winnerId ? "won" : "lost";
       await db.update(otcOffers).set({ status: newStatus }).where(eq(otcOffers.id, offer.id));
     }
+  }
+
+  async acceptOffer(offerId: string): Promise<void> {
+    // Get the offer that's being accepted
+    const acceptedOffer = await this.getOffer(offerId);
+    if (!acceptedOffer) {
+      throw new Error("Offer not found");
+    }
+
+    // Use the transaction ID from the offer to prevent tampering
+    const transactionId = acceptedOffer.transactionId;
+
+    // Get the transaction
+    const transaction = await this.getTransaction(transactionId);
+    if (!transaction) {
+      throw new Error("Transaction not found");
+    }
+
+    // Update transaction status to escrow and set winner
+    await db.update(transactions)
+      .set({ 
+        status: "escrow",
+        winnerOtcId: acceptedOffer.userId 
+      })
+      .where(eq(transactions.id, transactionId));
+
+    // Get all offers for this transaction
+    const allOffers = await this.getOffersForTransaction(transactionId);
+
+    // Update all offers statuses
+    for (const offer of allOffers) {
+      const newStatus = offer.id === offerId ? "won" : "lost";
+      await db.update(otcOffers).set({ status: newStatus }).where(eq(otcOffers.id, offer.id));
+
+      // Send notification to users whose offers were rejected
+      if (offer.id !== offerId) {
+        await this.createNotification({
+          userId: offer.userId,
+          type: "offer_rejected",
+          title: "Oferta no aceptada",
+          message: `Tu oferta para la transacción ${transaction.code || transaction.id.substring(0, 8)} no fue aceptada.`,
+          severity: "info",
+          source: "system",
+          payload: {
+            transactionId: transaction.id,
+            offerId: offer.id
+          }
+        });
+      }
+    }
+
+    // Send notification to the winner
+    await this.createNotification({
+      userId: acceptedOffer.userId,
+      type: "offer_accepted",
+      title: "¡Oferta aceptada!",
+      message: `Tu oferta para la transacción ${transaction.code || transaction.id.substring(0, 8)} fue aceptada. Ahora está en Escrow.`,
+      severity: "success",
+      source: "system",
+      payload: {
+        transactionId: transaction.id,
+        offerId: acceptedOffer.id
+      }
+    });
   }
 
   async getApiKeys(userId: string): Promise<ApiKey[]> {
