@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, Building2, User, Lock, Image as ImageIcon } from "lucide-react";
 import { z } from "zod";
 import { CountryPhoneInput } from "@/components/CountryPhoneInput";
 import { useForm } from "react-hook-form";
@@ -32,29 +34,109 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [countryCode, setCountryCode] = useState("+54");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string>("");
+  const [companyLogoPreview, setCompanyLogoPreview] = useState<string>("");
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
+  const companyLogoInputRef = useRef<HTMLInputElement>(null);
 
-  // Schema para perfil
+  // Schema para perfil personal
   const profileSchema = z.object({
     first_name: z.string().trim().max(100, "El nombre no puede tener más de 100 caracteres").optional(),
     last_name: z.string().trim().max(100, "El apellido no puede tener más de 100 caracteres").optional(),
     country: z.string().optional(),
   });
 
+  // Schema para datos de empresa
+  const companySchema = z.object({
+    companyName: z.string().trim().min(1, "El nombre de la empresa es requerido").max(200),
+    companyAddress: z.string().trim().max(500).optional(),
+    companyWebsite: z.string().trim().url("Debe ser una URL válida").or(z.literal("")).optional(),
+    companyPhone: z.string().trim().optional(),
+    companyEmail: z.string().trim().email("Debe ser un email válido").optional(),
+  });
+
+  // Schema para cambio de password
+  const passwordSchema = z.object({
+    currentPassword: z.string().min(1, "La contraseña actual es requerida"),
+    newPassword: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+    confirmPassword: z.string().min(1, "Confirma tu nueva contraseña"),
+  }).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  });
+
   const profileForm = useForm({
     resolver: zodResolver(profileSchema),
     mode: "onTouched",
     defaultValues: {
-      first_name: user?.firstName || "",
-      last_name: user?.lastName || "",
+      first_name: "",
+      last_name: "",
       country: "",
     },
   });
 
+  const companyForm = useForm({
+    resolver: zodResolver(companySchema),
+    mode: "onTouched",
+    defaultValues: {
+      companyName: "",
+      companyAddress: "",
+      companyWebsite: "",
+      companyPhone: "",
+      companyEmail: "",
+    },
+  });
+
+  const passwordForm = useForm({
+    resolver: zodResolver(passwordSchema),
+    mode: "onTouched",
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
   // Fetch profile
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: [`/api/profiles/${user?.id}`],
     enabled: !!user?.id,
   });
+
+  // Update forms when profile data loads
+  useEffect(() => {
+    if (profile) {
+      profileForm.reset({
+        first_name: profile.firstName || "",
+        last_name: profile.lastName || "",
+        country: profile.country || "",
+      });
+
+      companyForm.reset({
+        companyName: profile.companyName || "",
+        companyAddress: profile.companyAddress || "",
+        companyWebsite: profile.companyWebsite || "",
+        companyPhone: profile.companyPhone || "",
+        companyEmail: profile.companyEmail || "",
+      });
+
+      if (profile.phone) {
+        const parts = profile.phone.split(" ");
+        if (parts.length >= 2) {
+          setCountryCode(parts[0]);
+          setPhoneNumber(parts.slice(1).join(" "));
+        }
+      }
+
+      if (profile.profilePhoto) {
+        setProfilePhotoPreview(profile.profilePhoto);
+      }
+
+      if (profile.companyLogo) {
+        setCompanyLogoPreview(profile.companyLogo);
+      }
+    }
+  }, [profile, profileForm, companyForm]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
@@ -74,6 +156,23 @@ const Profile = () => {
     },
   });
 
+  // Change password mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      await apiRequest(`/api/profiles/${user?.id}/change-password`, {
+        method: 'POST',
+        data,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Contraseña actualizada correctamente");
+      passwordForm.reset();
+    },
+    onError: (error: any) => {
+      toast.error("Error al cambiar contraseña: " + error.message);
+    },
+  });
+
   const handleProfileUpdate = async (data: any) => {
     if (!user) return;
     setLoading(true);
@@ -84,9 +183,122 @@ const Profile = () => {
     }
   };
 
+  const handleCompanyUpdate = async (data: any) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      await updateProfileMutation.mutateAsync(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (data: any) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      await changePasswordMutation.mutateAsync({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Por favor selecciona una imagen válida");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen no debe superar 5MB");
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setProfilePhotoPreview(base64String);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to server
+    setLoading(true);
+    try {
+      const reader2 = new FileReader();
+      reader2.onloadend = async () => {
+        const base64String = reader2.result as string;
+        await updateProfileMutation.mutateAsync({ profilePhoto: base64String });
+        toast.success("Foto de perfil actualizada");
+      };
+      reader2.readAsDataURL(file);
+    } catch (error: any) {
+      toast.error("Error al subir la foto: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompanyLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Por favor selecciona una imagen válida");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen no debe superar 5MB");
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setCompanyLogoPreview(base64String);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to server
+    setLoading(true);
+    try {
+      const reader2 = new FileReader();
+      reader2.onloadend = async () => {
+        const base64String = reader2.result as string;
+        await updateProfileMutation.mutateAsync({ companyLogo: base64String });
+        toast.success("Logo de empresa actualizado");
+      };
+      reader2.readAsDataURL(file);
+    } catch (error: any) {
+      toast.error("Error al subir el logo: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!user) {
     navigate("/");
     return null;
+  }
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -95,115 +307,371 @@ const Profile = () => {
         currentLanguage={language} 
         onLanguageChange={setLanguage} 
       />
-      <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-4xl mx-auto w-full">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-5xl mx-auto w-full">
         <div className="space-y-4 sm:space-y-6">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">Perfil</h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Gestiona tu información personal y configuración de cuenta
+              Gestiona tu información personal, datos de empresa y configuración de cuenta
             </p>
           </div>
 
-          {/* Profile Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Información Personal</CardTitle>
-              <CardDescription>Actualiza tu información de perfil</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...profileForm}>
-                <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)} className="space-y-4" data-testid="form-profile">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={profileForm.control}
-                      name="first_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nombre</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Tu nombre" {...field} data-testid="input-firstname" />
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={profileForm.control}
-                      name="last_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Apellido</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Tu apellido" {...field} data-testid="input-lastname" />
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Teléfono</Label>
-                    <CountryPhoneInput
-                      countryCode={countryCode}
-                      phoneNumber={phoneNumber}
-                      onCountryCodeChange={setCountryCode}
-                      onPhoneNumberChange={setPhoneNumber}
-                    />
-                  </div>
+          <Tabs defaultValue="personal" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="personal" className="gap-2" data-testid="tab-personal">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Personal</span>
+              </TabsTrigger>
+              <TabsTrigger value="photos" className="gap-2" data-testid="tab-photos">
+                <ImageIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Fotos</span>
+              </TabsTrigger>
+              <TabsTrigger value="company" className="gap-2" data-testid="tab-company">
+                <Building2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Empresa</span>
+              </TabsTrigger>
+              <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
+                <Lock className="h-4 w-4" />
+                <span className="hidden sm:inline">Seguridad</span>
+              </TabsTrigger>
+            </TabsList>
 
-                  <FormField
-                    control={profileForm.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>País</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-country">
-                              <SelectValue placeholder="Selecciona tu país" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {countries.map((country) => (
-                              <SelectItem key={country} value={country}>
-                                {country}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
+            {/* Personal Information Tab */}
+            <TabsContent value="personal" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Información Personal</CardTitle>
+                  <CardDescription>Actualiza tu información de perfil</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...profileForm}>
+                    <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)} className="space-y-4" data-testid="form-profile">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField
+                          control={profileForm.control}
+                          name="first_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nombre</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Tu nombre" {...field} data-testid="input-firstname" />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={profileForm.control}
+                          name="last_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Apellido</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Tu apellido" {...field} data-testid="input-lastname" />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Teléfono Personal</Label>
+                        <CountryPhoneInput
+                          countryCode={countryCode}
+                          phoneNumber={phoneNumber}
+                          onCountryCodeChange={setCountryCode}
+                          onPhoneNumberChange={setPhoneNumber}
+                        />
+                      </div>
 
-                  <Button type="submit" disabled={loading} data-testid="button-save">
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Guardar Cambios
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+                      <FormField
+                        control={profileForm.control}
+                        name="country"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>País</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-country">
+                                  <SelectValue placeholder="Selecciona tu país" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {countries.map((country) => (
+                                  <SelectItem key={country} value={country}>
+                                    {country}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
 
-          <Separator />
+                      <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input type="email" value={user.email} disabled data-testid="input-email" />
+                        <p className="text-xs text-muted-foreground">
+                          Contacta a soporte para cambiar tu email
+                        </p>
+                      </div>
 
-          {/* Email Information (Read-only for now) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Información de Cuenta</CardTitle>
-              <CardDescription>Tu email de acceso a la plataforma</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" value={user.email} disabled data-testid="input-email" />
-                <p className="text-xs text-muted-foreground">
-                  Contacta a soporte para cambiar tu email
-                </p>
+                      <Button type="submit" disabled={loading} data-testid="button-save-personal">
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Guardar Cambios
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Photos Tab */}
+            <TabsContent value="photos" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Profile Photo */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Foto de Perfil</CardTitle>
+                    <CardDescription>Sube tu foto de perfil personal</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col items-center gap-4">
+                      <Avatar className="h-32 w-32">
+                        {profilePhotoPreview ? (
+                          <AvatarImage src={profilePhotoPreview} alt="Profile" />
+                        ) : (
+                          <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
+                            {user.email?.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <input
+                        type="file"
+                        ref={profilePhotoInputRef}
+                        onChange={handleProfilePhotoChange}
+                        accept="image/*"
+                        className="hidden"
+                        data-testid="input-profile-photo"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => profilePhotoInputRef.current?.click()}
+                        disabled={loading}
+                        data-testid="button-upload-profile-photo"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Subir Foto
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Formatos: JPG, PNG, GIF (máx. 5MB)
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Company Logo */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Logo de Empresa</CardTitle>
+                    <CardDescription>Sube el logo de tu empresa</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="h-32 w-32 border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center overflow-hidden bg-muted/50">
+                        {companyLogoPreview ? (
+                          <img src={companyLogoPreview} alt="Company Logo" className="max-h-full max-w-full object-contain" />
+                        ) : (
+                          <Building2 className="h-12 w-12 text-muted-foreground" />
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        ref={companyLogoInputRef}
+                        onChange={handleCompanyLogoChange}
+                        accept="image/*"
+                        className="hidden"
+                        data-testid="input-company-logo"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => companyLogoInputRef.current?.click()}
+                        disabled={loading}
+                        data-testid="button-upload-company-logo"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Subir Logo
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Formatos: JPG, PNG, SVG (máx. 5MB)
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+            </TabsContent>
+
+            {/* Company Information Tab */}
+            <TabsContent value="company" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Datos de Empresa</CardTitle>
+                  <CardDescription>Información de contacto de tu empresa</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...companyForm}>
+                    <form onSubmit={companyForm.handleSubmit(handleCompanyUpdate)} className="space-y-4" data-testid="form-company">
+                      <FormField
+                        control={companyForm.control}
+                        name="companyName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nombre de la Empresa *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Vudy Technologies" {...field} data-testid="input-company-name" />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={companyForm.control}
+                        name="companyAddress"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Dirección</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Av. Principal 123, Ciudad" {...field} data-testid="input-company-address" />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField
+                          control={companyForm.control}
+                          name="companyWebsite"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Sitio Web</FormLabel>
+                              <FormControl>
+                                <Input placeholder="https://ejemplo.com" {...field} data-testid="input-company-website" />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={companyForm.control}
+                          name="companyPhone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Teléfono (opcional)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="+1 234 567 8900" {...field} data-testid="input-company-phone" />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={companyForm.control}
+                        name="companyEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email de Empresa</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="contacto@empresa.com" {...field} data-testid="input-company-email" />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button type="submit" disabled={loading} data-testid="button-save-company">
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Guardar Datos de Empresa
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Security Tab */}
+            <TabsContent value="security" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cambiar Contraseña</CardTitle>
+                  <CardDescription>Actualiza tu contraseña de acceso</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...passwordForm}>
+                    <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-4" data-testid="form-password">
+                      <FormField
+                        control={passwordForm.control}
+                        name="currentPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contraseña Actual</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} data-testid="input-current-password" />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={passwordForm.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nueva Contraseña</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} data-testid="input-new-password" />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">
+                              Mínimo 8 caracteres
+                            </p>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={passwordForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirmar Nueva Contraseña</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} data-testid="input-confirm-password" />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button type="submit" disabled={loading} data-testid="button-change-password">
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Cambiar Contraseña
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>
