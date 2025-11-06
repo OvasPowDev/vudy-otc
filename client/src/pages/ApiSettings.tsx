@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -187,17 +188,18 @@ export default function ApiSettings() {
           </TabsContent>
 
           <TabsContent value="docs" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  API Documentation
-                </CardTitle>
-                <CardDescription>
-                  Integra transacciones externas mediante nuestra API REST
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    Documentación API REST
+                  </CardTitle>
+                  <CardDescription>
+                    Referencia completa de todos los endpoints disponibles
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8">
                 {/* Authentication */}
                 <div className="space-y-3">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -354,8 +356,227 @@ export default function ApiSettings() {
                     </div>
                   </div>
                 </div>
+
+                <Separator className="my-8" />
+
+                {/* Internal API - Transactions */}
+                <div className="space-y-4">
+                  <h2 className="text-xl font-bold">Endpoints Internos (Sin API Key)</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Los siguientes endpoints son para uso interno de la plataforma
+                  </p>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">📋 Transacciones</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/transactions</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Lista todas las transacciones con filtros opcionales</p>
+                      <div className="text-xs bg-muted p-2 rounded">
+                        Query params: userId, type, datePreset, from, to
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/transactions/:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Obtiene una transacción específica</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/transactions</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Crea una nueva transacción</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">PATCH</Badge>
+                        <code className="text-sm">/api/transactions/:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Actualiza una transacción</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/user-statistics/:userId</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Obtiene estadísticas del usuario (transacciones, órdenes ganadas, total procesado)</p>
+                    </div>
+                  </div>
+
+                  {/* Transaction Workflow */}
+                  <div className="space-y-4 mt-6">
+                    <h3 className="text-lg font-semibold">🔄 Flujo de Transacción (Workflow)</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/tx/:id/offer</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Crear una oferta OTC para una transacción</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/tx/:id/accept</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Aceptar una oferta y mover a escrow</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/tx/:id/proof</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Subir prueba de transferencia (solo CTF)</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/tx/:id/validate</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Validar y completar transacción</p>
+                    </div>
+                  </div>
+
+                  {/* Offers */}
+                  <div className="space-y-4 mt-6">
+                    <h3 className="text-lg font-semibold">💰 Ofertas</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/offers</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Lista todas las ofertas</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/offers/transaction/:transactionId</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Obtiene ofertas de una transacción específica</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/offers</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Crea una nueva oferta</p>
+                    </div>
+                  </div>
+
+                  {/* Bank Accounts */}
+                  <div className="space-y-4 mt-6">
+                    <h3 className="text-lg font-semibold">🏦 Cuentas Bancarias</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/bank-accounts?userId=:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Lista cuentas bancarias del usuario</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/bank-accounts/:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Obtiene una cuenta bancaria específica</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/bank-accounts</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Crea una nueva cuenta bancaria</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="destructive">DELETE</Badge>
+                        <code className="text-sm">/api/bank-accounts/:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Elimina una cuenta bancaria</p>
+                    </div>
+                  </div>
+
+                  {/* Wallets */}
+                  <div className="space-y-4 mt-6">
+                    <h3 className="text-lg font-semibold">👛 Wallets</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/wallets?userId=:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Lista wallets del usuario</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/wallets</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Crea una nueva wallet</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="destructive">DELETE</Badge>
+                        <code className="text-sm">/api/wallets/:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Elimina una wallet</p>
+                    </div>
+                  </div>
+
+                  {/* Notifications */}
+                  <div className="space-y-4 mt-6">
+                    <h3 className="text-lg font-semibold">🔔 Notificaciones</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">GET</Badge>
+                        <code className="text-sm">/api/notifications?userId=:id</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Lista notificaciones del usuario</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">PATCH</Badge>
+                        <code className="text-sm">/api/notifications/:id/read</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Marca una notificación como leída</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge>POST</Badge>
+                        <code className="text-sm">/api/notifications/mark-all-read</code>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Marca todas las notificaciones como leídas</p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
