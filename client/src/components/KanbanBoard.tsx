@@ -49,7 +49,7 @@ const getTimeAgo = (dateString: string) => {
 
 const getColumns = (t: (key: string) => string) => [
   { id: "pending", title: t('dashboard.pending'), color: "bg-slate-100 dark:bg-slate-800", icon: Clock },
-  { id: "offered_by_me", title: "Con mi oferta", color: "bg-blue-50 dark:bg-blue-950", icon: FileText },
+  { id: "offered_by_me", title: "Oferta hecha", color: "bg-blue-50 dark:bg-blue-950", icon: FileText },
   { id: "escrow", title: "Escrow creado", color: "bg-purple-50 dark:bg-purple-950", icon: Shield },
   { id: "completed", title: "Completada", color: "bg-green-50 dark:bg-green-950", icon: Shield },
 ];
