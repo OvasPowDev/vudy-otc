@@ -20,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { Profile as ProfileType } from "@shared/schema";
 
 const countries = [
   "Argentina", "Bolivia", "Chile", "Colombia", "Costa Rica", "Ecuador", 
@@ -98,7 +99,7 @@ const Profile = () => {
   });
 
   // Fetch profile
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  const { data: profile, isLoading: profileLoading } = useQuery<ProfileType>({
     queryKey: [`/api/profiles/${user?.id}`],
     enabled: !!user?.id,
   });

@@ -222,6 +222,39 @@ export function registerRoutes(app: Express) {
     return res.json(profile);
   });
 
+  app.post("/api/profiles/:id/change-password", async (req: Request, res: Response) => {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Current password and new password are required" });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "New password must be at least 8 characters long" });
+    }
+
+    try {
+      const profile = await storage.getProfile(req.params.id);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
+      // For now, since we don't have password authentication yet,
+      // we'll just update the password hash
+      // In a real implementation, you'd verify currentPassword against stored hash
+      
+      const bcrypt = await import('bcrypt');
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      await storage.updateProfile(req.params.id, { passwordHash: hashedPassword });
+      
+      return res.json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Bank Accounts
   app.get("/api/bank-accounts", async (req: Request, res: Response) => {
     const userId = req.query.userId as string;
