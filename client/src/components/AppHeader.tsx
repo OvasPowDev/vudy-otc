@@ -1,4 +1,4 @@
-import { Home, FileText, Settings, LogOut, CreditCard, Plus, Wallet, ChevronDown } from "lucide-react";
+import { Home, FileText, Settings, LogOut, CreditCard, Plus, Wallet, ChevronDown, Key } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { UserProfile } from "@/components/UserProfile";
@@ -36,6 +36,7 @@ const getProfileSubmenu = (t: (key: string) => string) => [
   { title: t('menu.profile'), url: "/profile", icon: Settings },
   { title: t('menu.accounts'), url: "/accounts", icon: CreditCard },
   { title: t('menu.wallets'), url: "/wallets", icon: Wallet },
+  { title: t('menu.api'), url: "/api-settings", icon: Key },
 ];
 
 export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransaction }: AppHeaderProps) {
@@ -62,6 +63,7 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
           accounts: "Cuentas",
           wallets: "Wallets",
           profile: "Perfil",
+          api: "API",
         }
       },
       en: {
@@ -71,6 +73,7 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
           accounts: "Accounts",
           wallets: "Wallets",
           profile: "Profile",
+          api: "API",
         }
       }
     };
@@ -87,7 +90,7 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
   const profileSubmenu = getProfileSubmenu(t);
   const location = useLocation();
   
-  const isProfileActive = ['/profile', '/accounts', '/wallets'].includes(location.pathname);
+  const isProfileActive = ['/profile', '/accounts', '/wallets', '/api-settings'].includes(location.pathname);
 
   useEffect(() => {
     const checkTheme = () => {
