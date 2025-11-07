@@ -197,6 +197,8 @@ export function registerRoutes(app: Express) {
           email: z.string().email().optional().or(z.literal("")),
         }),
         user: z.object({
+          firstName: z.string().min(2),
+          lastName: z.string().min(2),
           email: z.string().email(),
         }),
       });
@@ -227,8 +229,8 @@ export function registerRoutes(app: Express) {
         companyId: company.id,
         email: validated.user.email,
         username: username,
-        firstName: "Admin",
-        lastName: validated.company.name,
+        firstName: validated.user.firstName,
+        lastName: validated.user.lastName,
         country: "SV",
         status: "pending",
         role: "admin",
@@ -247,7 +249,7 @@ export function registerRoutes(app: Express) {
 
       const emailSent = await sendActivationEmail({
         to: validated.user.email,
-        firstName: "Admin",
+        firstName: validated.user.firstName,
         activationLink,
       });
 

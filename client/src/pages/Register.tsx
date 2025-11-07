@@ -21,6 +21,8 @@ const companySchema = z.object({
 });
 
 const userSchema = z.object({
+  firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres"),
   email: z.string().email("Debe ser un email válido"),
 });
 
@@ -47,6 +49,8 @@ export default function Register() {
   const userForm = useForm<UserData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       email: "",
     },
   });
@@ -207,7 +211,37 @@ export default function Register() {
               <form onSubmit={userForm.handleSubmit(handleUserSubmit)} className="space-y-4">
                 <div className="flex items-center gap-2 text-teal-600 mb-4">
                   <User className="h-5 w-5" />
-                  <span className="font-semibold">Email del administrador</span>
+                  <span className="font-semibold">Datos del administrador</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={userForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Juan" {...field} data-testid="input-first-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={userForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Apellido *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Pérez" {...field} data-testid="input-last-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <FormField
@@ -215,7 +249,7 @@ export default function Register() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email del administrador *</FormLabel>
+                      <FormLabel>Email *</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="admin@empresa.com" {...field} data-testid="input-user-email" />
                       </FormControl>

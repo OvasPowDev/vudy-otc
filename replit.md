@@ -79,11 +79,11 @@ Preferred communication style: Simple, everyday language.
 - Address (optional)
 - Website (optional)
 
-**Step 2 - Administrator Email** (Simplified):
-- Only asks for administrator email
+**Step 2 - Administrator Data**:
+- Asks for: Nombre (First Name), Apellido (Last Name), Email
 - Email automatically used as username for login
-- Default values: firstName="Admin", lastName=CompanyName, country="SV"
-- Simpler UX with less friction during registration
+- Default country: "SV" (El Salvador)
+- Clean UX with essential fields only
 
 ### Backend Registration Flow
 - Endpoint: `POST /api/auth/register`
