@@ -372,6 +372,11 @@ export function registerRoutes(app: Express) {
     const validated = insertOtcOfferSchema.parse(offerData);
     const offer = await storage.createOtcOffer(validated);
 
+    // Update transaction status to "offer_made"
+    await storage.updateTransaction(req.params.id, {
+      status: "offer_made",
+    });
+
     // Broadcast offer created event to SSE clients
     broadcast('offer.created', offer);
 

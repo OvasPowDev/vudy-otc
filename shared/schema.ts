@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const transactionTypeEnum = pgEnum("transaction_type", ["buy", "sell"]);
-export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "escrow", "completed", "failed"]);
+export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "offer_made", "escrow", "completed", "failed"]);
 export const offerStatusEnum = pgEnum("offer_status", ["open", "won", "lost"]);
 export const requestOriginEnum = pgEnum("request_origin", ["whatsapp", "api", "form", "manual"]);
 
