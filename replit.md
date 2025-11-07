@@ -206,3 +206,17 @@ Preferred communication style: Simple, everyday language.
     - Placeholder: "Ingrese el monto en USDT"
   - Modal adapts dynamically based on selected transaction type
   - Currency changed from GTQ to USD across all components and translations
+
+### Real-Time Kanban Updates (SSE)
+- ✅ **Server-Sent Events (SSE) for Automatic Kanban Refresh**:
+  - **External API Integration**: `/api/external/transactions` now emits `tx.created` broadcast when transaction is created via API
+  - **Offer Creation Updates**: `/api/tx/:id/offer` emits both `offer.created` and `tx.updated` events when offer is made
+  - **Frontend Auto-Refresh**: KanbanBoard listens to `tx.created`, `tx.updated`, `tx.accepted`, `tx.completed` events via EventSource
+  - **No Manual Refresh Needed**: Kanban automatically updates when:
+    - External API creates transaction
+    - Internal user creates transaction
+    - Liquidator makes offer (transaction moves to "Offer Made" column)
+    - Requester accepts offer (transaction moves to "Escrow" column)
+    - Transaction completes (moves to "Completed" column)
+  - **Implementation**: Uses existing SSE infrastructure (`broadcast()` function in `server/index.ts`)
+  - **Cache Invalidation**: TanStack Query cache automatically invalidated on SSE events
