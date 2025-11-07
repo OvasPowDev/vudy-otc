@@ -198,10 +198,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Create Transaction Modal Enhancement
 - ✅ **Dynamic Amount Field Based on Transaction Type**:
-  - **FTC (Fiat to Crypto)**: Shows amount field in fiat currency (GTQ)
-    - Label: "Monto (GTQ)"
-    - Placeholder: "Ingrese el monto en GTQ"
+  - **FTC (Fiat to Crypto)**: Shows amount field in fiat currency (USD)
+    - Label: "Monto (USD)"
+    - Placeholder: "Ingrese el monto en USD"
   - **CTF (Crypto to Fiat)**: Shows amount field in crypto (USDT)
     - Label: "Monto (USDT)"
     - Placeholder: "Ingrese el monto en USDT"
   - Modal adapts dynamically based on selected transaction type
+  - Currency changed from GTQ to USD across all components and translations
