@@ -373,12 +373,17 @@ export function registerRoutes(app: Express) {
     const offer = await storage.createOtcOffer(validated);
 
     // Update transaction status to "offer_made"
-    await storage.updateTransaction(req.params.id, {
+    const updatedTransaction = await storage.updateTransaction(req.params.id, {
       status: "offer_made",
     });
 
     // Broadcast offer created event to SSE clients
     broadcast('offer.created', offer);
+    
+    // Broadcast transaction updated event for real-time kanban updates
+    if (updatedTransaction) {
+      broadcast('tx.updated', updatedTransaction);
+    }
 
     return res.json(offer);
   });
