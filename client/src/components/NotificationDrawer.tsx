@@ -147,10 +147,13 @@ export const NotificationDrawer = ({
                               {notification.message}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(notification.created_at), {
-                                addSuffix: true,
-                                locale: es
-                              })}
+                              {notification.created_at && !isNaN(new Date(notification.created_at).getTime())
+                                ? formatDistanceToNow(new Date(notification.created_at), {
+                                    addSuffix: true,
+                                    locale: es
+                                  })
+                                : 'Recién'
+                              }
                             </p>
                           </div>
                         </div>
