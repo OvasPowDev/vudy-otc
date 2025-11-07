@@ -233,10 +233,11 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {offers.map((offer: any) => {
+                    {offers.map((offer: any, index: number) => {
                       const timeToOffer = getTimeElapsed(transaction.createdAt, offer.createdAt);
                       const offerAge = getTimeElapsed(offer.createdAt);
                       const isRequester = currentUserId === transaction.userId;
+                      const isFirstOffer = index === 0;
                       
                       return (
                         <OfferDetail 
@@ -247,6 +248,7 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
                           transaction={transaction}
                           onOfferAccepted={() => onOpenChange(false)}
                           isRequester={isRequester}
+                          showTestButton={isFirstOffer && transaction.status === "offer_made"}
                         />
                       );
                     })}
@@ -267,13 +269,14 @@ export function TransactionDetailModal({ open, onOpenChange, transactionId }: Tr
   );
 }
 
-function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepted, isRequester }: { 
+function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepted, isRequester, showTestButton }: { 
   offer: any; 
   timeToOffer: string; 
   offerAge: string; 
   transaction: any;
   onOfferAccepted: () => void;
   isRequester: boolean;
+  showTestButton?: boolean;
 }) {
   // Fetch bank account if offer has bankAccountId
   const { data: bankAccount } = useQuery<any>({
@@ -337,26 +340,48 @@ function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepte
         )}
       </div>
 
-      {canAcceptOffer && (
-        <div className="flex justify-end pt-2">
-          <Button 
-            onClick={() => acceptOfferMutation.mutate()}
-            disabled={acceptOfferMutation.isPending}
-            className="gap-2"
-            data-testid="button-accept-offer"
-          >
-            {acceptOfferMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Aceptando...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4" />
-                Aceptar Oferta
-              </>
-            )}
-          </Button>
+      {(canAcceptOffer || showTestButton) && (
+        <div className="flex justify-end gap-2 pt-2">
+          {showTestButton && (
+            <Button 
+              onClick={() => acceptOfferMutation.mutate()}
+              disabled={acceptOfferMutation.isPending}
+              className="gap-2 bg-purple-600 hover:bg-purple-700"
+              data-testid="button-approve-offer-test"
+            >
+              {acceptOfferMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  🧪 Oferta Aprobada (Prueba)
+                </>
+              )}
+            </Button>
+          )}
+          {canAcceptOffer && (
+            <Button 
+              onClick={() => acceptOfferMutation.mutate()}
+              disabled={acceptOfferMutation.isPending}
+              className="gap-2"
+              data-testid="button-accept-offer"
+            >
+              {acceptOfferMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Aceptando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Aceptar Oferta
+                </>
+              )}
+            </Button>
+          )}
         </div>
       )}
     </div>
