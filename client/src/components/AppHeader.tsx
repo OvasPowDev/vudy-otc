@@ -52,6 +52,9 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
           wallets: "Wallets",
           profile: "Perfil",
           api: "API",
+        },
+        createTransaction: {
+          title: "Crear Transacción"
         }
       },
       en: {
@@ -62,6 +65,9 @@ export function AppHeader({ currentLanguage, onLanguageChange, onCreateTransacti
           wallets: "Wallets",
           profile: "Profile",
           api: "API",
+        },
+        createTransaction: {
+          title: "Create Transaction"
         }
       }
     };
