@@ -177,12 +177,15 @@ export function CreateTransactionDialog({ open, onOpenChange, onTransactionCreat
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      {t('createTransaction.amount')} ({TEST_DATA.bankAccount.currency}) <span className="text-destructive">*</span>
+                      {t('createTransaction.amount')} ({transactionType === "FTC" ? TEST_DATA.bankAccount.currency : TEST_DATA.token}) <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder={t('createTransaction.enterAmount')}
+                        placeholder={transactionType === "FTC" 
+                          ? `${t('createTransaction.enterAmount')} en ${TEST_DATA.bankAccount.currency}` 
+                          : `${t('createTransaction.enterAmount')} en ${TEST_DATA.token}`
+                        }
                         className="h-10 text-lg"
                         {...field}
                         data-testid="input-amount"

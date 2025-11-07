@@ -168,3 +168,40 @@ Preferred communication style: Simple, everyday language.
   - Interface-level protection: IStorage.acceptOffer signature prevents transactionId injection
   - Prevents cross-transaction offer acceptance vulnerability
   - No race conditions or tampering vectors under current implementation
+
+## November 07, 2025 (Early Morning)
+
+### Transaction Status Workflow Fixes
+- ✅ **Added "offer_made" Status to Enum**:
+  - Updated `transaction_status` enum: `["pending", "offer_made", "escrow", "completed", "failed"]`
+  - Ran database migration with `npm run db:push --force`
+  - Updated 3 existing transactions with offers to "offer_made" status
+  
+- ✅ **Automatic Status Updates on Offer Creation**:
+  - Modified `/api/tx/:id/offer` endpoint to automatically update transaction status to "offer_made" when an offer is created
+  - Ensures transactions with offers always display correct status in Kanban board
+  
+- ✅ **Improved Accept Offer Button Logic**:
+  - Changed button visibility logic from strict status check to offer-based check
+  - Button now appears when: `offer.status === "open" && transaction.status not in ["escrow", "completed", "failed"]`
+  - More resilient to data inconsistencies and edge cases
+  
+- ✅ **Fixed Notification Drawer Crash**:
+  - Added safe date validation in `NotificationDrawer.tsx` before calling `formatDistanceToNow`
+  - Prevents "Invalid time value" errors that caused blank screens
+  - Gracefully handles null or invalid dates with fallback text "Recién"
+
+### Translation Fixes
+- ✅ **Fixed "Crear Transacción" Button**:
+  - Added missing `createTransaction.title` translations to AppHeader's local translation object
+  - Button now correctly displays "Crear Transacción" (ES) / "Create Transaction" (EN)
+
+### Create Transaction Modal Enhancement
+- ✅ **Dynamic Amount Field Based on Transaction Type**:
+  - **FTC (Fiat to Crypto)**: Shows amount field in fiat currency (GTQ)
+    - Label: "Monto (GTQ)"
+    - Placeholder: "Ingrese el monto en GTQ"
+  - **CTF (Crypto to Fiat)**: Shows amount field in crypto (USDT)
+    - Label: "Monto (USDT)"
+    - Placeholder: "Ingrese el monto en USDT"
+  - Modal adapts dynamically based on selected transaction type
