@@ -2,7 +2,7 @@ import { db } from "./db";
 import { 
   profiles, bankAccounts, notifications, transactions, wallets, otcOffers, apiKeys,
   companies, activationTokens,
-  type Profile, type InsertProfile,
+  type Profile, type InsertProfile, type ProfileWithCompany,
   type BankAccount, type InsertBankAccount,
   type Notification, type InsertNotification,
   type Transaction, type InsertTransaction,
@@ -19,9 +19,10 @@ export interface IStorage {
   // Companies
   createCompany(data: InsertCompany): Promise<Company>;
   getCompany(id: string): Promise<Company | undefined>;
+  updateCompany(id: string, data: Partial<InsertCompany>): Promise<Company | undefined>;
 
   // Profiles
-  getProfile(id: string): Promise<Profile | undefined>;
+  getProfile(id: string): Promise<ProfileWithCompany | undefined>;
   getProfileByEmail(email: string): Promise<Profile | undefined>;
   getProfileByUsername(username: string): Promise<Profile | undefined>;
   createProfile(data: InsertProfile): Promise<Profile>;
@@ -98,8 +99,39 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async getProfile(id: string): Promise<Profile | undefined> {
-    const result = await db.select().from(profiles).where(eq(profiles.id, id));
+  async updateCompany(id: string, data: Partial<InsertCompany>): Promise<Company | undefined> {
+    const result = await db.update(companies).set(data).where(eq(companies.id, id)).returning();
+    return result[0];
+  }
+
+  async getProfile(id: string): Promise<ProfileWithCompany | undefined> {
+    const result = await db
+      .select({
+        id: profiles.id,
+        email: profiles.email,
+        username: profiles.username,
+        firstName: profiles.firstName,
+        lastName: profiles.lastName,
+        country: profiles.country,
+        phone: profiles.phone,
+        profilePhoto: profiles.profilePhoto,
+        passwordHash: profiles.passwordHash,
+        companyId: profiles.companyId,
+        status: profiles.status,
+        role: profiles.role,
+        vudyUserId: profiles.vudyUserId,
+        createdAt: profiles.createdAt,
+        updatedAt: profiles.updatedAt,
+        companyName: companies.name,
+        companyAddress: companies.address,
+        companyWebsite: companies.website,
+        companyPhone: companies.phone,
+        companyEmail: companies.email,
+        companyLogo: companies.logo,
+      })
+      .from(profiles)
+      .leftJoin(companies, eq(profiles.companyId, companies.id))
+      .where(eq(profiles.id, id));
     return result[0];
   }
 

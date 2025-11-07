@@ -118,9 +118,15 @@ Preferred communication style: Simple, everyday language.
 - Status check prevents pending users from accessing dashboard
 
 ### Registration Flow Summary
-1. User visits `/register` → Fills company info (Step 1) → Enters admin email (Step 2)
+1. User visits `/register` → Fills company info (Step 1) → Enters admin name, last name, and email (Step 2)
 2. Backend creates company → Creates pending user with email as username → Generates token → Sends email
 3. User clicks activation link → System validates token
 4. Backend calls Vudy onboard with business data
 5. On success: User marked 'active' → Auto-login → Dashboard
 6. On failure: Retry button shown (token remains valid)
+
+### Company Data Management
+- Company email can be different from admin email
+- Users can edit company information (including company email) in Profile page → "Datos de Empresa" tab
+- Profile endpoint (GET/PATCH `/api/profiles/:id`) returns joined data from profiles and companies tables
+- PATCH endpoint separates company fields (companyName, companyEmail, etc.) from profile fields and updates both tables accordingly

@@ -162,6 +162,16 @@ export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type Profile = typeof profiles.$inferSelect;
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
+
+// Profile with joined company data
+export type ProfileWithCompany = Profile & {
+  companyName: string | null;
+  companyAddress: string | null;
+  companyWebsite: string | null;
+  companyPhone: string | null;
+  companyEmail: string | null;
+  companyLogo: string | null;
+};
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
 export type Notification = typeof notifications.$inferSelect;

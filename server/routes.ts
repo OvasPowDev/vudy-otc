@@ -393,11 +393,42 @@ export function registerRoutes(app: Express) {
   });
 
   app.patch("/api/profiles/:id", async (req: Request, res: Response) => {
-    const profile = await storage.updateProfile(req.params.id, req.body);
-    if (!profile) {
-      return res.status(404).json({ error: "Profile not found" });
+    try {
+      const profile = await storage.getProfile(req.params.id);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
+      const { 
+        companyName, companyAddress, companyWebsite, companyPhone, companyEmail, companyLogo,
+        ...profileData 
+      } = req.body;
+
+      // Update profile data
+      if (Object.keys(profileData).length > 0) {
+        await storage.updateProfile(req.params.id, profileData);
+      }
+
+      // Update company data if provided and user has a company
+      if (profile.companyId && (companyName || companyAddress || companyWebsite || companyPhone || companyEmail || companyLogo)) {
+        const companyUpdate: any = {};
+        if (companyName !== undefined) companyUpdate.name = companyName;
+        if (companyAddress !== undefined) companyUpdate.address = companyAddress;
+        if (companyWebsite !== undefined) companyUpdate.website = companyWebsite;
+        if (companyPhone !== undefined) companyUpdate.phone = companyPhone;
+        if (companyEmail !== undefined) companyUpdate.email = companyEmail;
+        if (companyLogo !== undefined) companyUpdate.logo = companyLogo;
+        
+        await storage.updateCompany(profile.companyId, companyUpdate);
+      }
+
+      // Return updated profile with company data
+      const updatedProfile = await storage.getProfile(req.params.id);
+      return res.json(updatedProfile);
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      return res.status(500).json({ error: error.message || 'Error updating profile' });
     }
-    return res.json(profile);
   });
 
   app.post("/api/profiles/:id/change-password", async (req: Request, res: Response) => {
