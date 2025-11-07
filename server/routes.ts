@@ -197,27 +197,20 @@ export function registerRoutes(app: Express) {
           email: z.string().email().optional().or(z.literal("")),
         }),
         user: z.object({
-          firstName: z.string().min(2),
-          lastName: z.string().min(2),
-          username: z.string().min(4),
           email: z.string().email(),
-          country: z.string().length(2),
         }),
       });
 
       const validated = registrationSchema.parse(req.body);
-
-      // Check if username is already taken
-      const existingUsername = await storage.getProfileByUsername(validated.user.username);
-      if (existingUsername) {
-        return res.status(400).json({ error: 'El nombre de usuario ya está en uso' });
-      }
 
       // Check if email is already registered
       const existingEmail = await storage.getProfileByEmail(validated.user.email);
       if (existingEmail) {
         return res.status(400).json({ error: 'El email ya está registrado' });
       }
+
+      // Use email as username
+      const username = validated.user.email;
 
       // Create company
       const company = await storage.createCompany({
@@ -233,10 +226,10 @@ export function registerRoutes(app: Express) {
       const profile = await storage.createProfile({
         companyId: company.id,
         email: validated.user.email,
-        username: validated.user.username,
-        firstName: validated.user.firstName,
-        lastName: validated.user.lastName,
-        country: validated.user.country,
+        username: username,
+        firstName: "Admin",
+        lastName: validated.company.name,
+        country: "SV",
         status: "pending",
         role: "admin",
         vudyUserId: null,
@@ -254,7 +247,7 @@ export function registerRoutes(app: Express) {
 
       const emailSent = await sendActivationEmail({
         to: validated.user.email,
-        firstName: validated.user.firstName,
+        firstName: "Admin",
         activationLink,
       });
 

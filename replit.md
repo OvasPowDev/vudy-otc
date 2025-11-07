@@ -61,3 +61,66 @@ Preferred communication style: Simple, everyday language.
 **API Documentation**: `swagger-jsdoc`, `swagger-ui-express`.
 
 **Email Service**: Resend API (for sending activation emails).
+
+# Recent Changes
+
+## November 07, 2025 - Multi-Company Registration System
+
+### Database Expansion
+- Created `companies` table (id, name, address, website, phone, email, logo, createdAt)
+- Modified `profiles` table: Added companyId, status (pending/active/inactive), role (admin/user), username, vudyUserId
+- Created `activation_tokens` table (id, token UUID, userId, expiresAt, used, createdAt)
+
+### Registration Wizard - Simplified 2-Step Process
+**Step 1 - Company Information**:
+- Company name (required)
+- Corporate email (optional)
+- Phone (optional)
+- Address (optional)
+- Website (optional)
+
+**Step 2 - Administrator Email** (Simplified):
+- Only asks for administrator email
+- Email automatically used as username for login
+- Default values: firstName="Admin", lastName=CompanyName, country="SV"
+- Simpler UX with less friction during registration
+
+### Backend Registration Flow
+- Endpoint: `POST /api/auth/register`
+- Creates company record
+- Creates user profile with status='pending'
+- Email automatically used as username
+- Generates UUID activation token (24-hour expiry)
+- Sends activation email via Resend (or logs to console if no API key)
+- Validates email uniqueness
+
+### Email Activation System
+- Activation route: `/activate/:token`
+- Endpoint: `GET /api/auth/activate/:token`
+- Validates token (expiry, single-use)
+- Calls Vudy `/v1/auth/onboard` with isBusiness=true
+- On success: Updates status='active', stores vudyUserId, marks token used
+- On failure: Shows retry button (token remains valid)
+- Auto-redirects to dashboard on success
+
+### Security Features
+- UUID-based tokens (cryptographically secure)
+- 24-hour token expiration
+- Single-use tokens (marked 'used' after successful activation)
+- Email uniqueness validation
+- Status-based access control (pending/active/inactive)
+
+### Frontend Updates
+- React Router v6 (migrated from Wouter)
+- Routes: `/register`, `/activate/:token`
+- "Crear cuenta" link on login page
+- Activation page with loading/success/error states
+- Status check prevents pending users from accessing dashboard
+
+### Registration Flow Summary
+1. User visits `/register` → Fills company info (Step 1) → Enters admin email (Step 2)
+2. Backend creates company → Creates pending user with email as username → Generates token → Sends email
+3. User clicks activation link → System validates token
+4. Backend calls Vudy onboard with business data
+5. On success: User marked 'active' → Auto-login → Dashboard
+6. On failure: Retry button shown (token remains valid)

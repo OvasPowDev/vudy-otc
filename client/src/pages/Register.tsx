@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,11 +21,7 @@ const companySchema = z.object({
 });
 
 const userSchema = z.object({
-  firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres"),
-  username: z.string().min(4, "El nombre de usuario debe tener al menos 4 caracteres").regex(/^[a-zA-Z0-9-]+$/, "Solo letras, números y guiones"),
   email: z.string().email("Debe ser un email válido"),
-  country: z.string().length(2, "Debe ser un código de país de 2 letras (ej: SV, GT, US)").toUpperCase(),
 });
 
 type CompanyData = z.infer<typeof companySchema>;
@@ -51,11 +47,7 @@ export default function Register() {
   const userForm = useForm<UserData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      username: "",
       email: "",
-      country: "",
     },
   });
 
@@ -63,7 +55,7 @@ export default function Register() {
     mutationFn: async (data: { company: CompanyData; user: UserData }) => {
       return await apiRequest("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify(data),
+        data: data,
       });
     },
     onSuccess: () => {
@@ -197,7 +189,7 @@ export default function Register() {
                 />
 
                 <div className="flex justify-between pt-4">
-                  <Link href="/">
+                  <Link to="/">
                     <Button type="button" variant="outline" data-testid="button-back-to-login">
                       <ChevronLeft className="h-4 w-4 mr-2" />
                       Volver al login
@@ -215,82 +207,21 @@ export default function Register() {
               <form onSubmit={userForm.handleSubmit(handleUserSubmit)} className="space-y-4">
                 <div className="flex items-center gap-2 text-teal-600 mb-4">
                   <User className="h-5 w-5" />
-                  <span className="font-semibold">Datos del administrador</span>
+                  <span className="font-semibold">Email del administrador</span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={userForm.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nombre *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Juan" {...field} data-testid="input-first-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={userForm.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Apellido *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Pérez" {...field} data-testid="input-last-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={userForm.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nombre de usuario *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="juanperez" {...field} data-testid="input-username" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <FormField
                   control={userForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email personal *</FormLabel>
+                      <FormLabel>Email del administrador *</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="juan@email.com" {...field} data-testid="input-user-email" />
+                        <Input type="email" placeholder="admin@empresa.com" {...field} data-testid="input-user-email" />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={userForm.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>País (código ISO) *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="SV" 
-                          maxLength={2} 
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                          data-testid="input-country" 
-                        />
-                      </FormControl>
+                      <FormDescription>
+                        Este email se usará como tu nombre de usuario para iniciar sesión
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
