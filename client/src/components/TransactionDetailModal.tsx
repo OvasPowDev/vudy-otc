@@ -302,9 +302,9 @@ function OfferDetail({ offer, timeToOffer, offerAge, transaction, onOfferAccepte
     },
   });
 
-  // Show accept button if transaction is in "offer_made" status and offer is "open"
+  // Show accept button if offer is "open" and transaction hasn't been accepted yet
   // TODO: Later add role verification to only show for requesters
-  const canAcceptOffer = transaction.status === "offer_made" && offer.status === "open";
+  const canAcceptOffer = offer.status === "open" && !["escrow", "completed", "failed"].includes(transaction.status);
 
   return (
     <div className="p-4 bg-muted rounded-lg space-y-3">
