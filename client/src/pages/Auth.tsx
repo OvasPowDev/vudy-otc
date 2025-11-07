@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -332,6 +332,22 @@ const Auth = () => {
       }
       
       const profile = await profileResponse.json();
+      
+      // Check if user account is active
+      if (profile.status && profile.status === 'pending') {
+        toast.error('Tu cuenta está pendiente de activación. Por favor revisa tu email y activa tu cuenta.');
+        setLoading(false);
+        setStep("email");
+        return;
+      }
+      
+      if (profile.status && profile.status === 'inactive') {
+        toast.error('Tu cuenta ha sido desactivada. Por favor contacta al soporte.');
+        setLoading(false);
+        setStep("email");
+        return;
+      }
+      
       login({
         email: profile.email,
         id: profile.id,
@@ -431,6 +447,15 @@ const Auth = () => {
                 >
                   🔧 Dev: Login as Jose
                 </Button>
+
+                <div className="text-center pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    ¿No tienes una cuenta?{" "}
+                    <Link to="/register" className="text-primary hover:underline font-medium" data-testid="link-register">
+                      Crear cuenta
+                    </Link>
+                  </p>
+                </div>
               </form>
             )}
 

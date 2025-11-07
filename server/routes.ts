@@ -4,6 +4,8 @@ import {
   insertBankAccountSchema, insertTransactionSchema, insertWalletSchema, insertOtcOfferSchema 
 } from "@shared/schema";
 import { broadcast } from "./index";
+import { sendActivationEmail } from "./lib/emailService";
+import { z } from "zod";
 
 const VUDY_API_BASE = "https://api-stg.vudy.app/v1/auth";
 
@@ -180,6 +182,187 @@ export function registerRoutes(app: Express) {
     } catch (error) {
       console.error('Error in auth-onboard:', error);
       return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Registration endpoint - Creates company and pending user
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
+    try {
+      const registrationSchema = z.object({
+        company: z.object({
+          name: z.string().min(2),
+          address: z.string().optional(),
+          website: z.string().url().optional().or(z.literal("")),
+          phone: z.string().optional(),
+          email: z.string().email().optional().or(z.literal("")),
+        }),
+        user: z.object({
+          firstName: z.string().min(2),
+          lastName: z.string().min(2),
+          username: z.string().min(4),
+          email: z.string().email(),
+          country: z.string().length(2),
+        }),
+      });
+
+      const validated = registrationSchema.parse(req.body);
+
+      // Check if username is already taken
+      const existingUsername = await storage.getProfileByUsername(validated.user.username);
+      if (existingUsername) {
+        return res.status(400).json({ error: 'El nombre de usuario ya está en uso' });
+      }
+
+      // Check if email is already registered
+      const existingEmail = await storage.getProfileByEmail(validated.user.email);
+      if (existingEmail) {
+        return res.status(400).json({ error: 'El email ya está registrado' });
+      }
+
+      // Create company
+      const company = await storage.createCompany({
+        name: validated.company.name,
+        address: validated.company.address || null,
+        website: validated.company.website || null,
+        phone: validated.company.phone || null,
+        email: validated.company.email || null,
+        logo: null,
+      });
+
+      // Create user profile with pending status
+      const profile = await storage.createProfile({
+        companyId: company.id,
+        email: validated.user.email,
+        username: validated.user.username,
+        firstName: validated.user.firstName,
+        lastName: validated.user.lastName,
+        country: validated.user.country,
+        status: "pending",
+        role: "admin",
+        vudyUserId: null,
+        phone: null,
+      });
+
+      // Generate activation token (expires in 24 hours)
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      const activationToken = await storage.createActivationToken(profile.id, expiresAt);
+
+      // Send activation email
+      const baseUrl = process.env.REPL_URL || `http://localhost:${process.env.PORT || 5000}`;
+      const activationLink = `${baseUrl}/activate/${activationToken.token}`;
+
+      const emailSent = await sendActivationEmail({
+        to: validated.user.email,
+        firstName: validated.user.firstName,
+        activationLink,
+      });
+
+      if (!emailSent) {
+        console.warn('Failed to send activation email, but user was created');
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Cuenta creada exitosamente. Revisa tu email para activarla.',
+        userId: profile.id,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Datos inválidos', details: error.errors });
+      }
+      console.error('Error in registration:', error);
+      return res.status(500).json({ error: 'Error al crear la cuenta' });
+    }
+  });
+
+  // Activation endpoint - Activates user and calls Vudy onboard
+  app.get("/api/auth/activate/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+
+      // Get activation token
+      const activationToken = await storage.getActivationToken(token);
+      if (!activationToken) {
+        return res.status(404).json({ error: 'Token de activación no encontrado' });
+      }
+
+      // Check if already used
+      if (activationToken.used) {
+        return res.status(400).json({ error: 'Este token ya ha sido utilizado' });
+      }
+
+      // Check if expired
+      if (new Date() > activationToken.expiresAt) {
+        return res.status(400).json({ error: 'El token ha expirado' });
+      }
+
+      // Get user profile
+      const profile = await storage.getProfile(activationToken.userId);
+      if (!profile) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+
+      // Get company
+      const company = profile.companyId ? await storage.getCompany(profile.companyId) : null;
+
+      // Call Vudy onboard API
+      const vudyApiKey = process.env.VUDY_API_KEY;
+      if (!vudyApiKey) {
+        console.error('VUDY_API_KEY not configured');
+        return res.status(500).json({ error: 'Configuración del servidor incompleta' });
+      }
+
+      const vudyResponse = await fetch(`${VUDY_API_BASE}/onboard`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': vudyApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          username: profile.username,
+          country: profile.country,
+          isBusiness: !!company,
+          businessName: company?.name,
+          termsOfService: true,
+        }),
+      });
+
+      if (!vudyResponse.ok) {
+        const errorText = await vudyResponse.text();
+        console.error('Vudy API error during activation:', errorText);
+        return res.status(500).json({ 
+          error: 'Error al crear cuenta en Vudy',
+          details: errorText,
+          canRetry: true 
+        });
+      }
+
+      const vudyData = await vudyResponse.json() as any;
+
+      // Mark user as active
+      await storage.updateProfile(profile.id, {
+        status: 'active',
+        vudyUserId: vudyData.data?.userId || null,
+      });
+
+      // Mark token as used
+      await storage.markActivationTokenUsed(token);
+
+      return res.json({
+        success: true,
+        message: 'Cuenta activada exitosamente',
+        profile: {
+          ...profile,
+          status: 'active',
+        },
+      });
+    } catch (error) {
+      console.error('Error in activation:', error);
+      return res.status(500).json({ error: 'Error al activar la cuenta' });
     }
   });
 

@@ -6,14 +6,34 @@ export const transactionTypeEnum = pgEnum("transaction_type", ["buy", "sell"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "offer_made", "escrow", "completed", "failed"]);
 export const offerStatusEnum = pgEnum("offer_status", ["open", "won", "lost"]);
 export const requestOriginEnum = pgEnum("request_origin", ["whatsapp", "api", "form", "manual"]);
+export const userStatusEnum = pgEnum("user_status", ["pending", "active", "inactive"]);
+export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
+
+export const companies = pgTable("companies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  address: text("address"),
+  website: text("website"),
+  phone: text("phone"),
+  email: text("email"),
+  logo: text("logo"),
+  status: userStatusEnum("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
+  companyId: uuid("company_id"),
   email: text("email"),
+  username: text("username").unique(),
   firstName: text("first_name"),
   lastName: text("last_name"),
   phone: text("phone"),
   country: text("country"),
+  status: userStatusEnum("status").notNull().default("pending"),
+  role: userRoleEnum("role").notNull().default("user"),
+  vudyUserId: text("vudy_user_id"),
   profilePhoto: text("profile_photo"),
   companyLogo: text("company_logo"),
   companyName: text("company_name"),
@@ -119,6 +139,17 @@ export const apiKeys = pgTable("api_keys", {
   revokedAt: timestamp("revoked_at"),
 });
 
+export const activationTokens = pgTable("activation_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().unique(),
+  token: uuid("token").notNull().unique().defaultRandom(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCompanySchema = createInsertSchema(companies).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
@@ -127,6 +158,8 @@ export const insertWalletSchema = createInsertSchema(wallets).omit({ id: true, c
 export const insertOtcOfferSchema = createInsertSchema(otcOffers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertApiKeySchema = createInsertSchema(apiKeys).omit({ id: true, createdAt: true });
 
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type Profile = typeof profiles.$inferSelect;
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
 export type BankAccount = typeof bankAccounts.$inferSelect;
@@ -141,3 +174,4 @@ export type OtcOffer = typeof otcOffers.$inferSelect;
 export type InsertOtcOffer = z.infer<typeof insertOtcOfferSchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ActivationToken = typeof activationTokens.$inferSelect;

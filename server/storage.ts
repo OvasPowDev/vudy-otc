@@ -1,23 +1,36 @@
 import { db } from "./db";
 import { 
   profiles, bankAccounts, notifications, transactions, wallets, otcOffers, apiKeys,
+  companies, activationTokens,
   type Profile, type InsertProfile,
   type BankAccount, type InsertBankAccount,
   type Notification, type InsertNotification,
   type Transaction, type InsertTransaction,
   type Wallet, type InsertWallet,
   type OtcOffer, type InsertOtcOffer,
-  type ApiKey, type InsertApiKey
+  type ApiKey, type InsertApiKey,
+  type Company, type InsertCompany,
+  type ActivationToken
 } from "@shared/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
+  // Companies
+  createCompany(data: InsertCompany): Promise<Company>;
+  getCompany(id: string): Promise<Company | undefined>;
+
   // Profiles
   getProfile(id: string): Promise<Profile | undefined>;
   getProfileByEmail(email: string): Promise<Profile | undefined>;
+  getProfileByUsername(username: string): Promise<Profile | undefined>;
   createProfile(data: InsertProfile): Promise<Profile>;
   updateProfile(id: string, data: Partial<InsertProfile>): Promise<Profile | undefined>;
+  
+  // Activation Tokens
+  createActivationToken(userId: string, expiresAt: Date): Promise<ActivationToken>;
+  getActivationToken(token: string): Promise<ActivationToken | undefined>;
+  markActivationTokenUsed(token: string): Promise<void>;
 
   // Bank Accounts
   getBankAccounts(userId: string): Promise<BankAccount[]>;
@@ -75,6 +88,16 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
+  async createCompany(data: InsertCompany): Promise<Company> {
+    const result = await db.insert(companies).values(data).returning();
+    return result[0];
+  }
+
+  async getCompany(id: string): Promise<Company | undefined> {
+    const result = await db.select().from(companies).where(eq(companies.id, id));
+    return result[0];
+  }
+
   async getProfile(id: string): Promise<Profile | undefined> {
     const result = await db.select().from(profiles).where(eq(profiles.id, id));
     return result[0];
@@ -82,6 +105,11 @@ export class DbStorage implements IStorage {
 
   async getProfileByEmail(email: string): Promise<Profile | undefined> {
     const result = await db.select().from(profiles).where(eq(profiles.email, email));
+    return result[0];
+  }
+
+  async getProfileByUsername(username: string): Promise<Profile | undefined> {
+    const result = await db.select().from(profiles).where(eq(profiles.username, username));
     return result[0];
   }
 
@@ -93,6 +121,25 @@ export class DbStorage implements IStorage {
   async updateProfile(id: string, data: Partial<InsertProfile>): Promise<Profile | undefined> {
     const result = await db.update(profiles).set(data).where(eq(profiles.id, id)).returning();
     return result[0];
+  }
+
+  async createActivationToken(userId: string, expiresAt: Date): Promise<ActivationToken> {
+    const result = await db.insert(activationTokens).values({
+      userId,
+      expiresAt,
+    }).returning();
+    return result[0];
+  }
+
+  async getActivationToken(token: string): Promise<ActivationToken | undefined> {
+    const result = await db.select().from(activationTokens).where(eq(activationTokens.token, token));
+    return result[0];
+  }
+
+  async markActivationTokenUsed(token: string): Promise<void> {
+    await db.update(activationTokens)
+      .set({ used: true, usedAt: new Date() })
+      .where(eq(activationTokens.token, token));
   }
 
   async getBankAccounts(userId: string): Promise<BankAccount[]> {

@@ -1,6 +1,6 @@
 # Overview
 
-This project is a Vudy OTC Hub application, a platform for managing Over-The-Counter (OTC) cryptocurrency transactions. It provides a kanban-style interface for liquidity providers to manage transaction requests. Key capabilities include creating buy/sell requests, making offers, tracking transaction statuses, and managing bank accounts and crypto wallets. The application aims to streamline OTC trading processes, offering a robust and user-friendly experience for both requesters and liquidators.
+This project is the Vudy OTC Hub, a platform designed for managing Over-The-Counter (OTC) cryptocurrency transactions. It provides a kanban-style interface enabling liquidity providers to handle transaction requests efficiently. The application supports creating buy/sell requests, making and accepting offers, tracking transaction statuses, and managing associated bank accounts and crypto wallets. Its primary goal is to streamline OTC trading through a robust and user-friendly experience for both requesters and liquidators. The project aims to capture a significant share of the OTC crypto market by offering a superior and efficient trading solution.
 
 # User Preferences
 
@@ -11,54 +11,44 @@ Preferred communication style: Simple, everyday language.
 ## Frontend Architecture
 
 **Framework**: React 18 with TypeScript, built using Vite.
-**UI Framework**: shadcn/ui (Radix UI, Tailwind CSS) for accessible, customizable components and Vudy OTC brand styling.
+**UI Framework**: shadcn/ui (Radix UI, Tailwind CSS) for accessible and customizable components.
 **State Management**: TanStack Query for server state; local React state for UI state.
-**Routing**: React Router v6 for client-side routing with protected routes.
+**Routing**: React Router v6 with protected routes.
 **Internationalization**: Custom context-based i18n supporting Spanish (default) and English.
-**Design Decisions**: Component-based architecture, responsive design with a mobile-first approach, dark/light theme support.
+**Design Decisions**: Component-based, responsive with a mobile-first approach, dark/light theme support.
+**Core Features**: Kanban board for transaction management, wallet & bank account management, API key management, real-time updates via SSE, dynamic transaction amount fields, multi-company registration with email activation.
 
 ## Backend Architecture
 
 **Framework**: Express.js server on Node.js with TypeScript.
 **Architecture Pattern**: REST API with route handlers and a data access layer.
 **Design Decisions**: Separation of concerns, interface-based storage for testability, middleware for logging and error handling, CORS enabled.
+**Core Features**: Transaction creation and management, offer system (create, accept), API for external transaction creation, user and company registration, email activation.
 
 ## Data Storage
 
 **Database**: PostgreSQL (Neon serverless).
 **ORM**: Drizzle ORM for type-safe queries and migrations.
 **Schema**: Shared `/shared/schema.ts` for type consistency.
-**Key Tables**: `profiles`, `bank_accounts`, `wallets`, `transactions`, `otc_offers`, `notifications`, `api_keys`.
+**Key Tables**: `profiles`, `bank_accounts`, `wallets`, `transactions`, `otc_offers`, `notifications`, `api_keys`, `companies`, `activation_tokens`.
 **Design Decisions**: UUID primary keys, timestamp fields, JSONB for metadata, enum types for data integrity.
 
 ## Authentication & Authorization
 
-**Strategy**: Integration with external Vudy API for OTP (One-Time Password) email verification.
-**Flow**: User email -> Vudy API check -> OTP send -> OTP verification -> Session creation.
+**Strategy**: Integration with external Vudy API for OTP email verification.
+**Flow**: User email -> Vudy API check -> OTP send -> OTP verification -> Session creation. Multi-company registration includes an email activation step before full account activation via Vudy API.
 **Session Management**: Custom solution using localStorage and in-memory state (authManager).
 **Protected Routes**: Client-side protection redirects unauthenticated users.
-**Design Decisions**: Passwordless authentication via OTP, Vudy API key as environment variable, profile creation post-authentication.
-
-## Core Features
-
--   **Transaction Management**: Create, view, and manage buy/sell (FTC/CTF) requests.
--   **Offer System**: Liquidators can make offers on pending transactions; requesters can accept offers.
--   **Kanban Board**: Visual management of transaction states (Pending, Offer Made, Escrow Created, Completed) with filtering by type and date.
--   **Wallet & Bank Account Management**: Users can add and manage their crypto wallets and bank accounts.
--   **Real-time Updates**: Server-Sent Events (SSE) for instant Kanban board updates.
--   **API Key Management**: Users can generate and manage API keys for external transaction creation.
--   **Internationalization**: Full support for Spanish and English across the application.
--   **External API Integration**: Endpoint for creating transactions via an external API key.
+**Design Decisions**: Passwordless authentication via OTP, Vudy API key as environment variable, profile creation post-authentication, user status (pending/active/inactive) for registration flow.
 
 # External Dependencies
 
 **Vudy Authentication API**:
--   Base URL: `https://api-stg.vudy.app/v1/auth`
--   Endpoints: `/check-user`, `/send-otp`, `/verify-otp`, `/onboard`
--   Authentication: API key (`x-api-key` header)
--   Purpose: User verification and OTP-based authentication.
+- Base URL: `https://api-stg.vudy.app/v1/auth`
+- Endpoints: `/check-user`, `/send-otp`, `/verify-otp`, `/onboard`
+- Purpose: User verification, OTP-based authentication, and business onboarding.
 
-**Neon Database**: Serverless PostgreSQL database, connected via `DATABASE_URL`.
+**Neon Database**: Serverless PostgreSQL database.
 
 **UI Libraries**: Radix UI, Tailwind CSS, Lucide React, date-fns.
 
@@ -70,153 +60,4 @@ Preferred communication style: Simple, everyday language.
 
 **API Documentation**: `swagger-jsdoc`, `swagger-ui-express`.
 
-# Recent Changes
-
-## November 06, 2025 (Evening)
-
-### Navigation Menu Reorganization
-- ✅ **Moved Profile Dropdown to Welcome Card**:
-  - Removed "Perfil" dropdown from main navigation menu
-  - Profile menu (Perfil, Cuentas, Wallets, API) now appears as dropdown under "Welcome, [email]" card
-  - Added chevron-down icon to indicate dropdown functionality
-  - Cleaner navigation menu with only Dashboard and Transacciones
-  - UserProfile component now handles dropdown menu with internationalization support
-
-## November 06, 2025 (Late PM)
-
-### Enhanced Profile Management System
-- ✅ **Clickable User Profile in Header**:
-  - User profile card in desktop header now navigates to `/profile` on click
-  - Added hover effect and cursor pointer for better UX
-  - data-testid added for testing
-  
-- ✅ **Comprehensive Profile Page (Tabbed Interface)**:
-  - **Tab 1 - Personal**: First name, last name, phone, country, email (read-only)
-  - **Tab 2 - Photos**: Upload profile photo and company logo (image upload with preview)
-  - **Tab 3 - Company**: Company name, address, website, phone (optional), email
-  - **Tab 4 - Security**: Change password form with validation (min 8 chars, confirm match)
-  
-- ✅ **Database Schema Updates**:
-  - Added to `profiles` table: profilePhoto, companyLogo, companyName, companyAddress, companyWebsite, companyPhone, companyEmail, passwordHash
-  - All fields nullable for flexibility
-  - Supports base64 image storage for photos and logos
-  
-- ✅ **Backend Implementation**:
-  - New endpoint: `POST /api/profiles/:id/change-password`
-  - Password hashing with bcrypt (10 salt rounds)
-  - Image upload via base64 encoding (max 5MB, validated on frontend)
-  - Full validation for company data (URL format for website, email format)
-  
-- ✅ **Form Validation**:
-  - Zod schemas for all forms: personal, company, password
-  - Real-time validation with error messages
-  - Password confirmation matching
-  - URL and email format validation
-
-- ✅ **Profile Loading States**:
-  - Separated loading states per mutation (updateProfileMutation, updateCompanyMutation, changePasswordMutation)
-  - Individual loading states for image uploads (uploadingPhoto, uploadingLogo)
-  - Error handling with automatic preview rollback on failed uploads
-  - Accurate UI feedback with disabled buttons and spinners during operations
-
-### Mobile-First Dashboard UI Improvements
-- ✅ **Responsive Statistics Grid**:
-  - Mobile/tablet: 2-column layout (`grid-cols-2`)
-  - Desktop: 4-column layout (`lg:grid-cols-4`)
-  - Optimized spacing (gap-3 on mobile, gap-4 on larger screens)
-  
-- ✅ **Enhanced Icons with Colors**:
-  - Total Transactions: TrendingUp icon (blue) - represents activity growth
-  - Buy Orders (CTF): ShoppingCart icon (green) - represents crypto to fiat purchases
-  - Sell Orders (FTC): Wallet icon (orange) - represents fiat to crypto sales
-  - Total Processed: CircleDollarSign icon (purple) - represents money processed
-  
-- ✅ **Mobile Typography Optimization**:
-  - Accessible text sizes (text-xs / 12px minimum) meeting WCAG standards
-  - Icons sized appropriately (h-5 w-5 on mobile, h-6 w-6 on desktop)
-  - Compact vertical spacing with `leading-tight` for better density
-  - Responsive title sizing (text-xs sm:text-sm)
-
-## November 06, 2025 (Night)
-
-### Offer Acceptance Workflow Implementation
-- ✅ **Backend Offer Acceptance System**:
-  - New storage method: `acceptOffer(offerId)` - securely accepts offers by deriving transactionId from the offer itself
-  - Security hardened: Removed transactionId parameter to prevent cross-transaction tampering
-  - Automatic status updates: Transaction moves to "escrow", winning offer marked "won", all other offers marked "lost"
-  - Notification system: Automatic notifications sent to users whose offers were rejected
-  
-- ✅ **API Endpoint**:
-  - New endpoint: `POST /api/offers/:offerId/accept`
-  - Only requires offerId in URL (no body required)
-  - Full validation and error handling
-  
-- ✅ **Frontend Offer Acceptance UI**:
-  - "Aceptar Oferta" button added to TransactionDetailModal
-  - Button only appears when transaction status is "offer_made" and offer status is "open"
-  - TanStack Query mutation with proper loading states
-  - Success toast notification on acceptance
-  - Automatic cache invalidation for transactions and offers
-  
-- ✅ **Notification System for Rejected Offers**:
-  - Storage method: `createNotification(userId, type, message, transactionId?)` 
-  - Notifications of type "offer_rejected" automatically sent to losing bidders
-  - Integrated with existing notification infrastructure
-  
-- ✅ **Security & Integrity**:
-  - Transaction ID derived exclusively from the offer record (not client input)
-  - Interface-level protection: IStorage.acceptOffer signature prevents transactionId injection
-  - Prevents cross-transaction offer acceptance vulnerability
-  - No race conditions or tampering vectors under current implementation
-
-## November 07, 2025 (Early Morning)
-
-### Transaction Status Workflow Fixes
-- ✅ **Added "offer_made" Status to Enum**:
-  - Updated `transaction_status` enum: `["pending", "offer_made", "escrow", "completed", "failed"]`
-  - Ran database migration with `npm run db:push --force`
-  - Updated 3 existing transactions with offers to "offer_made" status
-  
-- ✅ **Automatic Status Updates on Offer Creation**:
-  - Modified `/api/tx/:id/offer` endpoint to automatically update transaction status to "offer_made" when an offer is created
-  - Ensures transactions with offers always display correct status in Kanban board
-  
-- ✅ **Improved Accept Offer Button Logic**:
-  - Changed button visibility logic from strict status check to offer-based check
-  - Button now appears when: `offer.status === "open" && transaction.status not in ["escrow", "completed", "failed"]`
-  - More resilient to data inconsistencies and edge cases
-  
-- ✅ **Fixed Notification Drawer Crash**:
-  - Added safe date validation in `NotificationDrawer.tsx` before calling `formatDistanceToNow`
-  - Prevents "Invalid time value" errors that caused blank screens
-  - Gracefully handles null or invalid dates with fallback text "Recién"
-
-### Translation Fixes
-- ✅ **Fixed "Crear Transacción" Button**:
-  - Added missing `createTransaction.title` translations to AppHeader's local translation object
-  - Button now correctly displays "Crear Transacción" (ES) / "Create Transaction" (EN)
-
-### Create Transaction Modal Enhancement
-- ✅ **Dynamic Amount Field Based on Transaction Type**:
-  - **FTC (Fiat to Crypto)**: Shows amount field in fiat currency (USD)
-    - Label: "Monto (USD)"
-    - Placeholder: "Ingrese el monto en USD"
-  - **CTF (Crypto to Fiat)**: Shows amount field in crypto (USDT)
-    - Label: "Monto (USDT)"
-    - Placeholder: "Ingrese el monto en USDT"
-  - Modal adapts dynamically based on selected transaction type
-  - Currency changed from GTQ to USD across all components and translations
-
-### Real-Time Kanban Updates (SSE)
-- ✅ **Server-Sent Events (SSE) for Automatic Kanban Refresh**:
-  - **External API Integration**: `/api/external/transactions` now emits `tx.created` broadcast when transaction is created via API
-  - **Offer Creation Updates**: `/api/tx/:id/offer` emits both `offer.created` and `tx.updated` events when offer is made
-  - **Frontend Auto-Refresh**: KanbanBoard listens to `tx.created`, `tx.updated`, `tx.accepted`, `tx.completed` events via EventSource
-  - **No Manual Refresh Needed**: Kanban automatically updates when:
-    - External API creates transaction
-    - Internal user creates transaction
-    - Liquidator makes offer (transaction moves to "Offer Made" column)
-    - Requester accepts offer (transaction moves to "Escrow" column)
-    - Transaction completes (moves to "Completed" column)
-  - **Implementation**: Uses existing SSE infrastructure (`broadcast()` function in `server/index.ts`)
-  - **Cache Invalidation**: TanStack Query cache automatically invalidated on SSE events
+**Email Service**: Resend API (for sending activation emails).

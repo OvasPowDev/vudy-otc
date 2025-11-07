@@ -7,6 +7,8 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { queryClient } from "@/lib/queryClient";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Register from "./pages/Register";
+import Activate from "./pages/Activate";
 import Profile from "./pages/Profile";
 import BankAccounts from "./pages/BankAccounts";
 import Wallets from "./pages/Wallets";
@@ -23,6 +25,8 @@ const App = () => (
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/" element={<Auth />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/activate/:token" element={<Activate />} />
             <Route path="/dashboard" element={<Index />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/accounts" element={<BankAccounts />} />
