@@ -2,6 +2,7 @@ import { Request, Response, Express } from 'express';
 import { z } from 'zod';
 import { storage } from './storage';
 import { validateApiKey, AuthenticatedRequest } from './middleware/apiAuth';
+import { broadcast } from './index';
 
 const externalTransactionSchema = z.object({
   type: z.enum(['FTC', 'CTF']),
@@ -205,6 +206,9 @@ export function registerExternalRoutes(app: Express) {
       }
       
       const transaction = await storage.createTransaction(transactionData);
+      
+      // Broadcast transaction created event to SSE clients for real-time kanban updates
+      broadcast('tx.created', transaction);
       
       return res.status(201).json({
         id: transaction.id,
